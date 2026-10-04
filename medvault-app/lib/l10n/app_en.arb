@@ -1,0 +1,7 @@
+{
+  "@@locale": "en",
+  "appTitle": "MedVault",
+  "@appTitle": {
+    "description": "The application's title, shown in the OS task switcher."
+  }
+}

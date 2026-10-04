@@ -1,0 +1,9 @@
+{
+  "_comment": "[ASSUMPTION] These toolchain version pins are placeholders. No governing specification has confirmed exact Flutter/JDK/Android SDK versions as of Phase 0 (MV-IP-000). This file is a known gap and must be reconciled against the real verified toolchain before release tooling depends on it.",
+  "flutter": "3.24.x",
+  "dart": "3.5.x",
+  "jdk": "17",
+  "android_sdk_min": 24,
+  "android_sdk_target": 34,
+  "android_sdk_compile": 34
+}

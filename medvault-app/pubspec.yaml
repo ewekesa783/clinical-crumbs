@@ -1,0 +1,32 @@
+name: medvault_app
+description: MedVault — offline-first medical education application.
+version: 0.0.1+1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.24.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  medvault_shared:
+    path: ../medvault-shared
+  flutter_riverpod: ^2.5.0
+  riverpod_annotation: ^2.3.0
+  go_router: ^14.0.0
+  isar: ^3.1.0
+  isar_flutter_libs: ^3.1.0
+  path_provider: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  riverpod_generator: ^2.4.0
+  go_router_builder: ^2.7.0
+  build_runner: ^2.4.0
+  isar_generator: ^3.1.0
+
+flutter:
+  uses-material-design: true

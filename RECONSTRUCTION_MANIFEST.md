@@ -227,6 +227,28 @@ been, available to this project for this purpose):**
   this project's history.** Do not treat anything in this archive as
   confirmed to compile or run.
 
+## Post-reconstruction validation performed in the working copy
+
+The following validation was performed after the reconstruction was
+completed, using the current working copy:
+
+- flutter pub get was run successfully in medvault-app. Dependency
+  resolution completed successfully under the reconstructed dependency
+  constraints; dependencies were not upgraded.
+- dart run build_runner build --delete-conflicting-outputs was run
+  successfully, generating the required build-generated Dart files.
+- flutter analyze was run after generation and source corrections.
+  Result: no analyzer errors; one remaining deprecation warning in
+  generated Riverpod code (AutoDisposeProviderRef). The generated
+  file was intentionally not edited.
+- flutter test was run successfully with the Linux Isar native library
+  available through LD_LIBRARY_PATH. Result: 27/27 tests passed.
+  The environment variable was used only for test execution and no
+  project source/dependency modification was made for this workaround.
+- flutter build has NOT been run. Therefore full application build
+  validation remains unperformed, and the project should not be
+  described as having a confirmed production/buildable application.
+
 ## 6. Reconstruction-process note
 
 This reconstruction required two full rebuilds of the working tree

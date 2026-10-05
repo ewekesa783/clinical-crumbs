@@ -52,7 +52,7 @@ SyncMetadata _sync() => SyncMetadata(
 
 void main() {
   test('getRecentlyViewedEntry resolves the Note, not just the History '
-      'entry (final A.3A DTO shape: Note + viewedAt only)', async () {
+      'entry (final A.3A DTO shape: Note + viewedAt only)', () async {
     final historyRepository = _FakeHistoryRepository();
     final noteRepository = _FakeNoteRepository();
 
@@ -88,7 +88,7 @@ void main() {
     expect(entry.viewedAt, DateTime.utc(2026, 1, 5));
   });
 
-  test('returns null when no history entry exists for the note', async () {
+  test('returns null when no history entry exists for the note', () async {
     final service = RecentlyViewedService(
       historyRepository: _FakeHistoryRepository(),
       noteRepository: _FakeNoteRepository(),

@@ -20,20 +20,20 @@ void main() {
   late Directory tempDir;
   late IsarBookmarkRepository repository;
 
-  setUp(async () {
+  setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('medvault_isar_test_');
     isar = await Isar.open([BookmarkModelSchema], directory: tempDir.path);
     repository = IsarBookmarkRepository(isar);
   });
 
-  tearDown(async () {
+  tearDown(() async {
     await isar.close();
     if (await tempDir.exists()) {
       await tempDir.delete(recursive: true);
     }
   });
 
-  test('a note may have more than one bookmark (non-unique index)', async () {
+  test('a note may have more than one bookmark (non-unique index)', () async {
     await repository.save(Bookmark(
       uuid: 'bookmark-1',
       noteUuid: 'note-1',

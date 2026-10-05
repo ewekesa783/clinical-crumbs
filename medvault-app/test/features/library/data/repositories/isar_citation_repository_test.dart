@@ -29,20 +29,20 @@ void main() {
   late Directory tempDir;
   late IsarCitationRepository repository;
 
-  setUp(async () {
+  setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('medvault_isar_test_');
     isar = await Isar.open([CitationModelSchema], directory: tempDir.path);
     repository = IsarCitationRepository(isar);
   });
 
-  tearDown(async () {
+  tearDown(() async {
     await isar.close();
     if (await tempDir.exists()) {
       await tempDir.delete(recursive: true);
     }
   });
 
-  test('getByUuids preserves order, multiplicity, and omits missing', async () {
+  test('getByUuids preserves order, multiplicity, and omits missing', () async {
     await repository.save(_citation('cite-1', 'First'));
     await repository.save(_citation('cite-2', 'Second'));
 

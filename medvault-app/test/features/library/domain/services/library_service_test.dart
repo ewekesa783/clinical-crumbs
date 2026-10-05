@@ -137,7 +137,7 @@ void main() {
     );
   });
 
-  test('recordNoteViewed creates a new History entry on first view', async () {
+  test('recordNoteViewed creates a new History entry on first view', () async {
     await service.recordNoteViewed('note-1');
 
     final entry = await historyRepository.getByNoteUuid('note-1');
@@ -146,7 +146,7 @@ void main() {
   });
 
   test('recordNoteViewed reuses the existing uuid on a repeat view '
-      '(via _uuidFor)', async () {
+      '(via _uuidFor)', () async {
     await service.recordNoteViewed('note-1', viewedAt: DateTime.utc(2026, 1, 1));
     final first = await historyRepository.getByNoteUuid('note-1');
 
@@ -157,7 +157,7 @@ void main() {
     expect(second.viewedAt, DateTime.utc(2026, 1, 2));
   });
 
-  test('getNoteWithCitations resolves citations in citationOrder', async () {
+  test('getNoteWithCitations resolves citations in citationOrder', () async {
     await citationRepository.save(Citation(
       uuid: 'cite-1',
       sourceType: SourceType.textbook,
@@ -186,7 +186,7 @@ void main() {
     expect(result.citations.first.uuid, 'cite-1');
   });
 
-  test('bookmarkNote then isNoteBookmarked reflects the new bookmark', async () {
+  test('bookmarkNote then isNoteBookmarked reflects the new bookmark', () async {
     expect(await service.isNoteBookmarked('note-1'), isFalse);
     await service.bookmarkNote('note-1');
     expect(await service.isNoteBookmarked('note-1'), isTrue);

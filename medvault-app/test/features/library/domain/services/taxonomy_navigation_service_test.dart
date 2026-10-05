@@ -43,7 +43,7 @@ TaxonomyNode _node(String uuid, String? parentUuid) => TaxonomyNode(
     );
 
 void main() {
-  test('getBreadcrumbPath walks from root to the target node', async () {
+  test('getBreadcrumbPath walks from root to the target node', () async {
     final repository = _FakeTaxonomyRepository();
     await repository.save(_node('root', null));
     await repository.save(_node('child', 'root'));

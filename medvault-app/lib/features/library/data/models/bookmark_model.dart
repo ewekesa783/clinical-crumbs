@@ -1,7 +1,6 @@
 import 'package:isar/isar.dart';
 
 import '../../../../core/database/sync_metadata_model.dart';
-import '../../domain/entities/bookmark.dart';
 
 part 'bookmark_model.g.dart';
 

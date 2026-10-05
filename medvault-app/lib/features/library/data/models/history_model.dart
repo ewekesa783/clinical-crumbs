@@ -1,7 +1,6 @@
 import 'package:isar/isar.dart';
 
 import '../../../../core/database/sync_metadata_model.dart';
-import '../../domain/entities/history.dart';
 
 part 'history_model.g.dart';
 

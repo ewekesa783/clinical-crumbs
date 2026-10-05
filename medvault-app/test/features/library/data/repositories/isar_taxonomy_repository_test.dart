@@ -2,12 +2,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar/isar.dart';
-import 'package:medvault_app/core/database/sync_metadata_model.dart';
 import 'package:medvault_app/core/sync/sync_metadata.dart';
 import 'package:medvault_app/features/library/data/models/taxonomy_node_model.dart';
 import 'package:medvault_app/features/library/data/repositories/isar_taxonomy_repository.dart';
 import 'package:medvault_app/features/library/domain/entities/taxonomy_node.dart';
-import 'package:path/path.dart' as p;
 
 SyncMetadata _sync() => SyncMetadata(
       lastModifiedLocal: DateTime.utc(2026, 1, 1),
@@ -22,7 +20,7 @@ void main() {
   late Directory tempDir;
   late IsarTaxonomyRepository repository;
 
-  setUp(async () {
+  setUp(() async {
     // A real temp-directory Isar instance is used here rather than an
     // in-memory instance; see the corrected repository-test comment
     // established during MV-IP-001 Task A.1A.
@@ -34,14 +32,14 @@ void main() {
     repository = IsarTaxonomyRepository(isar);
   });
 
-  tearDown(async () {
+  tearDown(() async {
     await isar.close();
     if (await tempDir.exists()) {
       await tempDir.delete(recursive: true);
     }
   });
 
-  test('save then getByUuid returns the inserted node', async () {
+  test('save then getByUuid returns the inserted node', () async {
     final node = TaxonomyNode(
       uuid: 'node-1',
       parentUuid: null,
@@ -65,7 +63,7 @@ void main() {
     expect(fetched!.title, 'Cardiology');
   });
 
-  test('getChildren resolves parent-child relationships', async () {
+  test('getChildren resolves parent-child relationships', () async {
     final parent = TaxonomyNode(
       uuid: 'parent-1',
       parentUuid: null,
@@ -105,7 +103,7 @@ void main() {
     expect(children.first.uuid, 'child-1');
   });
 
-  test('save rejects a duplicate-slug sibling', async () {
+  test('save rejects a duplicate-slug sibling', () async {
     final first = TaxonomyNode(
       uuid: 'node-1',
       parentUuid: 'parent-1',

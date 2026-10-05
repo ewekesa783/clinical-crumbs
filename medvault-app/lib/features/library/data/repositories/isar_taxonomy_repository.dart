@@ -28,10 +28,10 @@ class IsarTaxonomyRepository implements TaxonomyRepository {
         .filter()
         .parentUuidEqualTo(model.parentUuid)
         .slugEqualTo(model.slug)
-        .uuidNotEqualTo(model.uuid)
         .findFirst();
 
-    if (siblingWithSameSlug != null) {
+    if (siblingWithSameSlug != null &&
+        siblingWithSameSlug.uuid != model.uuid) {
       throw StateError(
         'A sibling taxonomy node with slug "${model.slug}" already exists '
         'under parent "${model.parentUuid}".',

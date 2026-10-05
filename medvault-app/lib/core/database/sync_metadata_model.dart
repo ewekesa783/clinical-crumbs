@@ -1,5 +1,7 @@
 import 'package:isar/isar.dart';
 
+part 'sync_metadata_model.g.dart';
+
 /// Isar-embedded persistence model mirroring [SyncMetadata].
 ///
 /// Embedded Isar objects cannot carry `@Index()` annotations — indexing

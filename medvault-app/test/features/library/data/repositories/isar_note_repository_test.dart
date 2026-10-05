@@ -20,20 +20,20 @@ void main() {
   late Directory tempDir;
   late IsarNoteRepository repository;
 
-  setUp(async () {
+  setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('medvault_isar_test_');
     isar = await Isar.open([NoteModelSchema], directory: tempDir.path);
     repository = IsarNoteRepository(isar);
   });
 
-  tearDown(async () {
+  tearDown(() async {
     await isar.close();
     if (await tempDir.exists()) {
       await tempDir.delete(recursive: true);
     }
   });
 
-  test('save then getByUuid returns the inserted note', async () {
+  test('save then getByUuid returns the inserted note', () async {
     final note = Note(
       uuid: 'note-1',
       topicUuid: 'topic-1',
@@ -55,7 +55,7 @@ void main() {
     expect(fetched!.title, 'Heart failure');
   });
 
-  test('getByTopicAndMode resolves the composite unique index', async () {
+  test('getByTopicAndMode resolves the composite unique index', () async {
     final note = Note(
       uuid: 'note-1',
       topicUuid: 'topic-1',

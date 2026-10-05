@@ -20,20 +20,20 @@ void main() {
   late Directory tempDir;
   late IsarHistoryRepository repository;
 
-  setUp(async () {
+  setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('medvault_isar_test_');
     isar = await Isar.open([HistoryModelSchema], directory: tempDir.path);
     repository = IsarHistoryRepository(isar);
   });
 
-  tearDown(async () {
+  tearDown(() async {
     await isar.close();
     if (await tempDir.exists()) {
       await tempDir.delete(recursive: true);
     }
   });
 
-  test('getByNoteUuid returns the single entry for a note', async () {
+  test('getByNoteUuid returns the single entry for a note', () async {
     await repository.save(History(
       uuid: 'history-1',
       noteUuid: 'note-1',
@@ -47,7 +47,7 @@ void main() {
   });
 
   test('unique noteUuid index rejects a second distinct entry for the '
-      'same note', async () {
+      'same note', () async {
     await repository.save(History(
       uuid: 'history-1',
       noteUuid: 'note-1',

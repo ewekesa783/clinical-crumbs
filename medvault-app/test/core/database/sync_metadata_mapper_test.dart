@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medvault_app/core/database/sync_metadata_mapper.dart';
-import 'package:medvault_app/core/database/sync_metadata_model.dart';
 import 'package:medvault_app/core/sync/sync_metadata.dart';
 
 void main() {

@@ -1,20 +1,27 @@
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:medvault_app/features/library/data/models/bookmark_model.dart';
+import 'package:medvault_app/features/library/data/models/citation_model.dart';
+import 'package:medvault_app/features/library/data/models/history_model.dart';
+import 'package:medvault_app/features/library/data/models/note_model.dart';
+import 'package:medvault_app/features/library/data/models/taxonomy_node_model.dart';
+
 /// Opens the application's single Isar database instance.
 ///
-/// KNOWN GAP (preserved intentionally — do not "fix" without an explicit
-/// task authorizing it): the schema list passed to [Isar.open] is empty.
-/// None of the five Phase 1 collections (TaxonomyNodeModel, NoteModel,
-/// CitationModel, BookmarkModel, HistoryModel) are registered here yet.
-/// Registering them is deferred to the task that wires up the composition
-/// root, which has not been authorized as of the current project state
-/// (MV-IP-002 Task Group A is complete; there is no Task Group B).
+/// All persistent MedVault collections are registered here so that the
+/// application uses one shared Isar database for its local data layer.
 Future<Isar> bootstrap() async {
   final directory = await getApplicationDocumentsDirectory();
+
   return Isar.open(
-    [], // TODO(known-gap): register TaxonomyNodeModel, NoteModel,
-    //     CitationModel, BookmarkModel, HistoryModel schemas here.
+    [
+      TaxonomyNodeModelSchema,
+      NoteModelSchema,
+      CitationModelSchema,
+      BookmarkModelSchema,
+      HistoryModelSchema,
+    ],
     directory: directory.path,
   );
 }

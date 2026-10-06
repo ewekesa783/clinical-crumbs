@@ -2,9 +2,11 @@ import 'package:isar/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../app/bootstrap.dart';
+import '../../features/library/data/repositories/isar_citation_repository.dart';
 import '../../features/library/data/repositories/isar_note_repository.dart';
 import '../../features/library/data/repositories/isar_taxonomy_repository.dart';
 import '../../features/library/domain/repositories/taxonomy_repository.dart';
+import '../../features/library/domain/repositories/citation_repository.dart';
 import '../../features/library/domain/repositories/note_repository.dart';
 
 part 'injector.g.dart';
@@ -28,4 +30,13 @@ Future<TaxonomyRepository> taxonomyRepository(TaxonomyRepositoryRef ref) async {
 Future<NoteRepository> noteRepository(NoteRepositoryRef ref) async {
   final isar = await ref.watch(appDatabaseProvider.future);
   return IsarNoteRepository(isar);
+}
+
+/// Provides the citation repository backed by the application's Isar database.
+@riverpod
+Future<CitationRepository> citationRepository(
+  CitationRepositoryRef ref,
+) async {
+  final isar = await ref.watch(appDatabaseProvider.future);
+  return IsarCitationRepository(isar);
 }

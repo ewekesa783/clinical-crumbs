@@ -8,6 +8,7 @@ import '../../features/library/data/repositories/isar_history_repository.dart';
 import '../../features/library/data/repositories/isar_note_repository.dart';
 import '../../features/library/data/repositories/isar_taxonomy_repository.dart';
 import '../../features/library/domain/repositories/taxonomy_repository.dart';
+import '../../features/library/domain/services/taxonomy_navigation_service.dart';
 import '../../features/library/domain/repositories/bookmark_repository.dart';
 import '../../features/library/domain/repositories/citation_repository.dart';
 import '../../features/library/domain/repositories/history_repository.dart';
@@ -62,4 +63,15 @@ Future<HistoryRepository> historyRepository(
 ) async {
   final isar = await ref.watch(appDatabaseProvider.future);
   return IsarHistoryRepository(isar);
+}
+
+
+/// Provides the taxonomy navigation service backed by the application's
+/// taxonomy repository.
+@riverpod
+Future<TaxonomyNavigationService> taxonomyNavigationService(
+  TaxonomyNavigationServiceRef ref,
+) async {
+  final taxonomyRepository = await ref.watch(taxonomyRepositoryProvider.future);
+  return TaxonomyNavigationService(taxonomyRepository: taxonomyRepository);
 }

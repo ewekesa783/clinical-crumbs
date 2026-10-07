@@ -4,7 +4,7 @@ import 'package:isar/isar.dart';
 
 import 'app/app.dart';
 import 'app/bootstrap.dart';
-import 'core/database/app_database.dart';
+import 'core/di/injector.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +14,7 @@ Future<void> main() async {
   runApp(
     ProviderScope(
       overrides: [
-        isarInstanceProvider.overrideWithValue(isar),
+        appDatabaseProvider.overrideWith((ref) async => isar),
       ],
       child: const MedVaultApp(),
     ),

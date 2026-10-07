@@ -4,8 +4,20 @@ import 'package:go_router/go_router.dart';
 
 import '../debug/component_gallery_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/library/presentation/screens/library_screen.dart';
+import '../shell/medvault_shell.dart';
 
 part 'app_router.g.dart';
+
+@TypedGoRoute<LibraryRoute>(path: '/library')
+class LibraryRoute extends GoRouteData {
+  const LibraryRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) {
+    return const LibraryScreen();
+  }
+}
 
 @TypedGoRoute<HomeRoute>(path: '/')
 class HomeRoute extends GoRouteData {
@@ -38,5 +50,20 @@ class ComponentGalleryRoute extends GoRouteData {
 }
 
 final GoRouter appRouter = GoRouter(
-  routes: $appRoutes,
+  routes: [
+    ShellRoute(
+      builder: (context, state, child) {
+        return MedVaultShell(
+          onHomeSelected: () => const HomeRoute().go(context),
+          onLibrarySelected: () => const LibraryRoute().go(context),
+          child: child,
+        );
+      },
+      routes: [
+        $homeRoute,
+        $libraryRoute,
+      ],
+    ),
+    $componentGalleryRoute,
+  ],
 );

@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/router/app_router.dart';
 import '../../../../core/constants/spacing_tokens.dart';
+import '../../domain/entities/note.dart';
 import '../../domain/entities/taxonomy_node.dart';
 import '../providers/taxonomy_browser_provider.dart';
 
-/// Browses a taxonomy node and its direct children.
+/// Browses a taxonomy node and its direct children or available notes.
 class TaxonomyBrowserScreen extends ConsumerWidget {
   const TaxonomyBrowserScreen({
     required this.nodeUuid,
@@ -89,43 +90,153 @@ class _TaxonomyBrowserContent extends StatelessWidget {
           ),
         ],
         const SizedBox(height: AppSpacing.xl),
+        if (data.children.isNotEmpty)
+          _ChildTopicsSection(children: data.children)
+        else
+          _TopicNotesSection(notes: data.notes),
+      ],
+    );
+  }
+}
+
+class _ChildTopicsSection extends StatelessWidget {
+  const _ChildTopicsSection({
+    required this.children,
+  });
+
+  final List<TaxonomyNode> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Text(
           'Contents',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: AppSpacing.sm),
-        if (data.children.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-            child: Text(
-              'No subtopics yet',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          )
-        else
-          ...data.children.map(
-            (child) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: Card(
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                    vertical: AppSpacing.sm,
-                  ),
-                  title: Text(child.title),
-                  subtitle: child.shortDescription == null
-                      ? null
-                      : Text(child.shortDescription!),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => TaxonomyBrowserRoute(
-                    nodeUuid: child.uuid,
-                  ).go(context),
+        ...children.map(
+          (child) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Card(
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.sm,
                 ),
+                title: Text(child.title),
+                subtitle: child.shortDescription == null
+                    ? null
+                    : Text(child.shortDescription!),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => TaxonomyBrowserRoute(
+                  nodeUuid: child.uuid,
+                ).go(context),
               ),
             ),
           ),
+        ),
       ],
     );
+  }
+}
+
+class _TopicNotesSection extends StatelessWidget {
+  const _TopicNotesSection({
+    required this.notes,
+  });
+
+  final List<Note> notes;
+
+  @override
+  Widget build(BuildContext context) {
+    if (notes.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+        child: Column(
+          children: [
+            Icon(
+              Icons.menu_book_outlined,
+              size: 40,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'No learning material yet',
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'This topic does not have any notes available yet.',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Learning material',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        ...notes.map(
+          (note) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: _NoteModeCard(note: note),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NoteModeCard extends StatelessWidget {
+  const _NoteModeCard({
+    required this.note,
+  });
+
+  final Note note;
+
+  @override
+  Widget build(BuildContext context) {
+    final modeDetails = _modeDetails(note.mode);
+
+    return Card(
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.sm,
+        ),
+        leading: Icon(modeDetails.icon),
+        title: Text(modeDetails.title),
+        subtitle: Text(note.title),
+        trailing: const Icon(Icons.chevron_right),
+      ),
+    );
+  }
+
+  ({String title, IconData icon}) _modeDetails(Mode mode) {
+    return switch (mode) {
+      Mode.detailedNotes => (
+          title: 'Detailed Notes',
+          icon: Icons.notes_outlined,
+        ),
+      Mode.visualLearning => (
+          title: 'Visual Learning',
+          icon: Icons.auto_awesome_outlined,
+        ),
+      Mode.quickReview => (
+          title: 'Quick Review',
+          icon: Icons.flash_on_outlined,
+        ),
+    };
   }
 }
 

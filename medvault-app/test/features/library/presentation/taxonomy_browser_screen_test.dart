@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../../lib/core/sync/sync_metadata.dart';
+import '../../../../lib/features/library/domain/entities/note.dart';
 import '../../../../lib/features/library/domain/entities/taxonomy_node.dart';
+import '../../../../lib/features/library/domain/services/dto/topic_notes.dart';
 import '../../../../lib/features/library/presentation/providers/taxonomy_browser_provider.dart';
 import '../../../../lib/features/library/presentation/screens/taxonomy_browser_screen.dart';
 
@@ -29,6 +31,33 @@ TaxonomyNode makeNode({
     sortOrder: sortOrder,
     noteCount: 0,
     isUserCreated: false,
+    createdAt: DateTime(2026, 1, 1),
+    updatedAt: DateTime(2026, 1, 1),
+    sync: SyncMetadata(
+      lastModifiedLocal: DateTime(2026, 1, 1),
+      isDirty: false,
+      isDeleted: false,
+      deviceId: 'test-device',
+      syncRevision: 1,
+    ),
+  );
+}
+
+Note makeNote({
+  required String uuid,
+  required String topicUuid,
+  required Mode mode,
+  required String title,
+}) {
+  return Note(
+    uuid: uuid,
+    topicUuid: topicUuid,
+    mode: mode,
+    title: title,
+    bodyMarkdown: '# $title',
+    tags: const [],
+    citationOrder: const [],
+    isPinned: false,
     createdAt: DateTime(2026, 1, 1),
     updatedAt: DateTime(2026, 1, 1),
     sync: SyncMetadata(
@@ -90,6 +119,7 @@ void main() {
       node: medicine,
       breadcrumb: [medicine],
       children: [cardiology, neurology],
+      topicNotes: null,
     );
 
     await tester.pumpWidget(buildTestApp(data));
@@ -103,6 +133,7 @@ void main() {
       node: medicine,
       breadcrumb: [medicine],
       children: [cardiology, neurology],
+      topicNotes: null,
     );
 
     await tester.pumpWidget(buildTestApp(data));
@@ -130,6 +161,10 @@ void main() {
       node: cardiologyNode,
       breadcrumb: [medicine, cardiologyNode],
       children: const [],
+      topicNotes: const TopicNotes(
+        topicUuid: 'cardiology',
+        notes: [],
+      ),
     );
 
     await tester.pumpWidget(buildTestApp(data));
@@ -139,16 +174,81 @@ void main() {
     expect(find.text('Cardiology'), findsWidgets);
   });
 
-  testWidgets('displays empty state when a node has no children', (tester) async {
+  testWidgets('displays available learning modes for a populated leaf',
+      (tester) async {
+    final detailedNotes = makeNote(
+      uuid: 'note-detailed',
+      topicUuid: 'cardiology',
+      mode: Mode.detailedNotes,
+      title: 'Cardiology Detailed Notes',
+    );
+
+    final quickReview = makeNote(
+      uuid: 'note-quick',
+      topicUuid: 'cardiology',
+      mode: Mode.quickReview,
+      title: 'Cardiology Quick Review',
+    );
+
+    final cardiologyNode = makeNode(
+      uuid: 'cardiology',
+      parentUuid: 'medicine',
+      title: 'Cardiology',
+      slug: 'cardiology',
+      depth: 1,
+      sortOrder: 0,
+    );
+
     final data = TaxonomyBrowserData(
-      node: medicine,
-      breadcrumb: [medicine],
+      node: cardiologyNode,
+      breadcrumb: [medicine, cardiologyNode],
       children: const [],
+      topicNotes: TopicNotes(
+        topicUuid: 'cardiology',
+        notes: [detailedNotes, quickReview],
+      ),
     );
 
     await tester.pumpWidget(buildTestApp(data));
     await tester.pumpAndSettle();
 
-    expect(find.text('No subtopics yet'), findsOneWidget);
+    expect(find.text('Learning material'), findsOneWidget);
+    expect(find.text('Detailed Notes'), findsOneWidget);
+    expect(find.text('Quick Review'), findsOneWidget);
+    expect(find.text('Cardiology Detailed Notes'), findsOneWidget);
+    expect(find.text('Cardiology Quick Review'), findsOneWidget);
+    expect(find.text('No learning material yet'), findsNothing);
+  });
+
+  testWidgets('displays genuine empty state for a leaf without notes',
+      (tester) async {
+    final cardiologyNode = makeNode(
+      uuid: 'cardiology',
+      parentUuid: 'medicine',
+      title: 'Cardiology',
+      slug: 'cardiology',
+      depth: 1,
+      sortOrder: 0,
+    );
+
+    final data = TaxonomyBrowserData(
+      node: cardiologyNode,
+      breadcrumb: [medicine, cardiologyNode],
+      children: const [],
+      topicNotes: const TopicNotes(
+        topicUuid: 'cardiology',
+        notes: [],
+      ),
+    );
+
+    await tester.pumpWidget(buildTestApp(data));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No learning material yet'), findsOneWidget);
+    expect(
+      find.text('This topic does not have any notes available yet.'),
+      findsOneWidget,
+    );
+    expect(find.text('Learning material'), findsNothing);
   });
 }

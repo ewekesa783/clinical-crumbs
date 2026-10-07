@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/router/app_router.dart';
 import '../../../../core/constants/spacing_tokens.dart';
 import '../providers/library_roots_provider.dart';
 
@@ -83,6 +84,9 @@ class LibraryScreen extends ConsumerWidget {
                       ? null
                       : Text(node.shortDescription!),
                   trailing: const Icon(Icons.chevron_right),
+                  onTap: () => TaxonomyBrowserRoute(
+                    nodeUuid: node.uuid,
+                  ).go(context),
                 ),
               );
             },

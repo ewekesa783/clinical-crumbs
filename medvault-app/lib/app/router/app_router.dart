@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../debug/component_gallery_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/library/presentation/screens/library_screen.dart';
+import '../../features/library/presentation/screens/taxonomy_browser_screen.dart';
 import '../shell/medvault_shell.dart';
 
 part 'app_router.g.dart';
@@ -16,6 +17,18 @@ class LibraryRoute extends GoRouteData {
   @override
   Widget build(BuildContext context, GoRouterState state) {
     return const LibraryScreen();
+  }
+}
+
+@TypedGoRoute<TaxonomyBrowserRoute>(path: '/library/node/:nodeUuid')
+class TaxonomyBrowserRoute extends GoRouteData {
+  const TaxonomyBrowserRoute({required this.nodeUuid});
+
+  final String nodeUuid;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) {
+    return TaxonomyBrowserScreen(nodeUuid: nodeUuid);
   }
 }
 
@@ -62,6 +75,7 @@ final GoRouter appRouter = GoRouter(
       routes: [
         $homeRoute,
         $libraryRoute,
+        $taxonomyBrowserRoute,
       ],
     ),
     $componentGalleryRoute,

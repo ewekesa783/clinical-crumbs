@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../debug/component_gallery_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/library/presentation/screens/library_screen.dart';
+import '../../features/library/presentation/screens/note_reader_screen.dart';
 import '../../features/library/presentation/screens/taxonomy_browser_screen.dart';
 import '../shell/medvault_shell.dart';
 
@@ -29,6 +30,18 @@ class TaxonomyBrowserRoute extends GoRouteData {
   @override
   Widget build(BuildContext context, GoRouterState state) {
     return TaxonomyBrowserScreen(nodeUuid: nodeUuid);
+  }
+}
+
+@TypedGoRoute<NoteReaderRoute>(path: '/library/note/:noteUuid')
+class NoteReaderRoute extends GoRouteData {
+  const NoteReaderRoute({required this.noteUuid});
+
+  final String noteUuid;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) {
+    return NoteReaderScreen(noteUuid: noteUuid);
   }
 }
 
@@ -76,6 +89,7 @@ final GoRouter appRouter = GoRouter(
         $homeRoute,
         $libraryRoute,
         $taxonomyBrowserRoute,
+        $noteReaderRoute,
       ],
     ),
     $componentGalleryRoute,

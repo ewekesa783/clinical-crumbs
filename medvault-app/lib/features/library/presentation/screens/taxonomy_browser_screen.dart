@@ -218,6 +218,7 @@ class _NoteModeCard extends StatelessWidget {
         title: Text(modeDetails.title),
         subtitle: Text(note.title),
         trailing: const Icon(Icons.chevron_right),
+        onTap: () => NoteReaderRoute(noteUuid: note.uuid).go(context),
       ),
     );
   }

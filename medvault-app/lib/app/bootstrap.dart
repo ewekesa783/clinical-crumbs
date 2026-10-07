@@ -6,6 +6,7 @@ import 'package:medvault_app/features/library/data/models/citation_model.dart';
 import 'package:medvault_app/features/library/data/models/history_model.dart';
 import 'package:medvault_app/features/library/data/models/note_model.dart';
 import 'package:medvault_app/features/library/data/models/taxonomy_node_model.dart';
+import 'package:medvault_app/core/storage/device_identity_model.dart';
 
 /// Opens the application's single Isar database instance.
 ///
@@ -21,6 +22,7 @@ Future<Isar> bootstrap() async {
       CitationModelSchema,
       BookmarkModelSchema,
       HistoryModelSchema,
+      DeviceIdentityModelSchema,
     ],
     directory: directory.path,
   );

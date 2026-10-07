@@ -8,3 +8,8 @@ build/
 .flutter-plugins-dependencies
 *.g.dart
 *.freezed.dart
+
+# Flutter / IDE generated files
+.idea/
+.metadata
+*.iml

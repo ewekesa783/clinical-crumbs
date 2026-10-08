@@ -262,10 +262,18 @@ class _Breadcrumbs extends StatelessWidget {
               size: 18,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-          Text(
-            nodes[index].title,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          if (index < nodes.length - 1)
+            TextButton(
+              onPressed: () => TaxonomyBrowserRoute(
+                nodeUuid: nodes[index].uuid,
+              ).go(context),
+              child: Text(nodes[index].title),
+            )
+          else
+            Text(
+              nodes[index].title,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
         ],
       ],
     );

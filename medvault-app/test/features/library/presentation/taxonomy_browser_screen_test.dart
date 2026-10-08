@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../lib/core/sync/sync_metadata.dart';
 import '../../../../lib/features/library/domain/entities/note.dart';
@@ -145,6 +146,50 @@ void main() {
       find.text('Diseases and disorders of the cardiovascular system.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('navigates to an ancestor when its breadcrumb is tapped', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      initialLocation: '/library/node/neurology',
+      routes: [
+        GoRoute(
+          path: '/library/node/neurology',
+          builder: (context, state) => TaxonomyBrowserScreen(
+            nodeUuid: neurology.uuid,
+          ),
+        ),
+        GoRoute(
+          path: '/library/node/medicine',
+          builder: (context, state) => const Scaffold(
+            body: Text('Node: medicine'),
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          taxonomyBrowserProvider('neurology').overrideWith(
+            (ref) async => TaxonomyBrowserData(
+              node: neurology,
+              breadcrumb: [medicine, cardiology, neurology],
+              children: const [],
+              topicNotes: null,
+            ),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Medicine'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Node: medicine'), findsOneWidget);
   });
 
   testWidgets('displays the full breadcrumb path', (tester) async {

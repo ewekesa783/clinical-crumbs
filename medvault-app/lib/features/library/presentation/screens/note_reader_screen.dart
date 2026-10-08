@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/spacing_tokens.dart';
 import '../../domain/entities/citation.dart';
 import '../../domain/services/dto/note_with_citations.dart';
+import '../providers/note_bookmark_provider.dart';
 import '../providers/note_reader_provider.dart';
 
 /// Displays a single note and its resolved citations.
@@ -27,6 +28,10 @@ class NoteReaderScreen extends ConsumerWidget {
               data == null ? const Text('Note') : Text(data.note.title),
           orElse: () => const Text('Note'),
         ),
+        actions: [
+          if (noteAsync.hasValue && noteAsync.value != null)
+            _BookmarkButton(noteUuid: noteUuid),
+        ],
       ),
       body: noteAsync.when(
         loading: () => const Center(
@@ -68,6 +73,50 @@ class NoteReaderScreen extends ConsumerWidget {
 
           return _NoteReaderContent(data: data);
         },
+      ),
+    );
+  }
+}
+
+class _BookmarkButton extends ConsumerWidget {
+  const _BookmarkButton({
+    required this.noteUuid,
+  });
+
+  final String noteUuid;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bookmarkAsync = ref.watch(noteBookmarkProvider(noteUuid));
+
+    return IconButton(
+      tooltip: bookmarkAsync.maybeWhen(
+        data: (bookmarked) =>
+            bookmarked ? 'Bookmarked' : 'Bookmark note',
+        orElse: () => 'Bookmark note',
+      ),
+      onPressed: bookmarkAsync.maybeWhen(
+        data: (bookmarked) {
+          if (bookmarked) return null;
+
+          return () {
+            ref
+                .read(noteBookmarkProvider(noteUuid).notifier)
+                .bookmark();
+          };
+        },
+        orElse: () => null,
+      ),
+      icon: bookmarkAsync.maybeWhen(
+        loading: () => const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        data: (bookmarked) => Icon(
+          bookmarked ? Icons.bookmark : Icons.bookmark_border,
+        ),
+        orElse: () => const Icon(Icons.bookmark_border),
       ),
     );
   }

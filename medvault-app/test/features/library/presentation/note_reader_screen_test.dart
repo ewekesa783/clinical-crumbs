@@ -9,6 +9,7 @@ import '../../../../lib/core/sync/sync_metadata.dart';
 import '../../../../lib/features/library/domain/entities/citation.dart';
 import '../../../../lib/features/library/domain/entities/note.dart';
 import '../../../../lib/features/library/domain/services/dto/note_with_citations.dart';
+import '../../../../lib/features/library/presentation/providers/note_bookmark_provider.dart';
 import '../../../../lib/features/library/presentation/providers/note_reader_provider.dart';
 import '../../../../lib/features/library/presentation/screens/note_reader_screen.dart';
 
@@ -68,12 +69,25 @@ Widget buildTestApp({
       noteReaderProvider(noteUuid).overrideWith(
         (ref) async => value.requireValue,
       ),
+      noteBookmarkProvider(noteUuid).overrideWith(
+        TestNoteBookmark.new,
+      ),
     ],
     child: MaterialApp(
       theme: ThemeData(useMaterial3: true),
       home: NoteReaderScreen(noteUuid: noteUuid),
     ),
   );
+}
+
+class TestNoteBookmark extends NoteBookmark {
+  @override
+  Future<bool> build(String noteUuid) async => false;
+
+  @override
+  Future<void> bookmark() async {
+    state = const AsyncData(true);
+  }
 }
 
 void main() {
@@ -96,6 +110,64 @@ void main() {
     await tester.pump();
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  testWidgets('shows an outline bookmark for an unbookmarked note', (
+    tester,
+  ) async {
+    final note = makeNote(uuid: 'note-1');
+
+    final data = NoteWithCitations(
+      note: note,
+      citations: [makeCitation()],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          noteReaderProvider(note.uuid).overrideWith(
+            (ref) async => data,
+          ),
+          noteBookmarkProvider(note.uuid).overrideWith(
+            TestNoteBookmark.new,
+          ),
+        ],
+        child: const MaterialApp(
+          home: NoteReaderScreen(noteUuid: 'note-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.bookmark_border), findsOneWidget);
+    expect(find.byTooltip('Bookmark note'), findsOneWidget);
+  });
+
+  testWidgets('bookmark action changes the note to bookmarked', (
+    tester,
+  ) async {
+    final note = makeNote(uuid: 'note-1');
+
+    final data = NoteWithCitations(
+      note: note,
+      citations: [makeCitation()],
+    );
+
+    await tester.pumpWidget(
+      buildTestApp(
+        noteUuid: note.uuid,
+        value: AsyncData<NoteWithCitations?>(data),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.bookmark_border), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Bookmark note'));
+    await tester.pump();
+
+    expect(find.byIcon(Icons.bookmark), findsOneWidget);
+    expect(find.byTooltip('Bookmarked'), findsOneWidget);
   });
 
   testWidgets('displays not-found state', (tester) async {

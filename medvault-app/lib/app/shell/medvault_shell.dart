@@ -20,8 +20,9 @@ class MedVaultShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    final isLibrary =
-        location == '/library' || location.startsWith('/library/node/');
+    final isLibrary = location == '/library' ||
+        location.startsWith('/library/node/') ||
+        location.startsWith('/library/note/');
 
     return LayoutBuilder(
       builder: (context, constraints) {

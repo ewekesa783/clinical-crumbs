@@ -232,6 +232,28 @@ void main() {
     expect(markdown.data, contains('This is **important**.'));
   });
 
+  testWidgets('enables link handling in the Markdown body', (tester) async {
+    final note = makeNote(
+      uuid: 'note-1',
+      bodyMarkdown: 'Read [the guideline](https://example.com/guideline).',
+    );
+    final data = NoteWithCitations(
+      note: note,
+      citations: [makeCitation()],
+    );
+
+    await tester.pumpWidget(
+      buildTestApp(
+        noteUuid: note.uuid,
+        value: AsyncData<NoteWithCitations?>(data),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
+    expect(markdown.onTapLink, isNotNull);
+  });
+
   testWidgets('renders citation URLs as tappable links', (tester) async {
     final note = makeNote(uuid: 'note-1');
     final data = NoteWithCitations(

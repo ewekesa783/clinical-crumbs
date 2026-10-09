@@ -143,6 +143,25 @@ class _NoteReaderContent extends StatelessWidget {
         MarkdownBody(
           data: data.note.bodyMarkdown,
           selectable: true,
+          onTapLink: (text, href, title) async {
+            if (href == null) return;
+
+            final uri = Uri.tryParse(href);
+            if (uri == null ||
+                (uri.scheme != 'http' && uri.scheme != 'https') ||
+                uri.host.isEmpty) {
+              return;
+            }
+
+            try {
+              await launchUrl(
+                uri,
+                mode: LaunchMode.externalApplication,
+              );
+            } catch (_) {
+              // Keep the reader usable if the external app cannot open.
+            }
+          },
         ),
         if (data.citations.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.xxl),

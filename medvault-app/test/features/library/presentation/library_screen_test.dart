@@ -73,6 +73,14 @@ void main() {
     expect(find.text('Surgery'), findsOneWidget);
   });
 
+  testWidgets('displays node type and note count', (tester) async {
+    await tester.pumpWidget(buildTestApp(nodes));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Subject · 10 notes'), findsOneWidget);
+    expect(find.text('Subject · 5 notes'), findsOneWidget);
+  });
+
   testWidgets('navigates to a root taxonomy node when tapped', (tester) async {
     final router = GoRouter(
       initialLocation: '/library',

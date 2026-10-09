@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/router/app_router.dart';
 import '../../../../core/constants/spacing_tokens.dart';
+import '../../domain/entities/taxonomy_node.dart';
 import '../providers/library_roots_provider.dart';
 
 /// Library landing screen.
@@ -68,8 +69,7 @@ class LibraryScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.lg),
             itemCount: roots.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(height: AppSpacing.sm),
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (context, index) {
               final node = roots[index];
 
@@ -80,9 +80,21 @@ class LibraryScreen extends ConsumerWidget {
                     vertical: AppSpacing.sm,
                   ),
                   title: Text(node.title),
-                  subtitle: node.shortDescription == null
-                      ? null
-                      : Text(node.shortDescription!),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (node.shortDescription != null) ...[
+                        Text(node.shortDescription!),
+                        const SizedBox(height: AppSpacing.xs),
+                      ],
+                      Text(
+                        '${_nodeTypeLabel(node.nodeType)}'
+                        '${node.noteCount > 0 ? ' · ${node.noteCount} notes' : ''}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => TaxonomyBrowserRoute(
                     nodeUuid: node.uuid,
@@ -95,4 +107,13 @@ class LibraryScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _nodeTypeLabel(NodeType nodeType) {
+  return switch (nodeType) {
+    NodeType.subject => 'Subject',
+    NodeType.system => 'System',
+    NodeType.topic => 'Topic',
+    NodeType.custom => 'Custom',
+  };
 }

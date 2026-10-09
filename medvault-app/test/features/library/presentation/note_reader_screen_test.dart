@@ -39,7 +39,7 @@ Note makeNote({
   );
 }
 
-Citation makeCitation() {
+Citation makeCitation({String? url}) {
   return Citation(
     uuid: 'citation-1',
     sourceType: SourceType.textbook,
@@ -47,7 +47,7 @@ Citation makeCitation() {
     authors: 'Kliegman et al.',
     publicationYear: 2024,
     pageReference: 'p. 120',
-    url: null,
+    url: url,
     createdAt: DateTime(2026, 1, 1),
     updatedAt: DateTime(2026, 1, 1),
     sync: SyncMetadata(
@@ -208,6 +208,46 @@ void main() {
 
     final markdown = tester.widget<MarkdownBody>(markdownFinder);
     expect(markdown.data, contains('This is **important**.'));
+  });
+
+  testWidgets('renders citation URLs as tappable links', (tester) async {
+    final note = makeNote(uuid: 'note-1');
+    final data = NoteWithCitations(
+      note: note,
+      citations: [makeCitation(url: 'https://example.com/reference')],
+    );
+
+    await tester.pumpWidget(
+      buildTestApp(
+        noteUuid: note.uuid,
+        value: AsyncData<NoteWithCitations?>(data),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('https://example.com/reference'), findsOneWidget);
+    expect(find.byType(TextButton), findsOneWidget);
+  });
+
+  testWidgets('ignores unsafe citation URL schemes', (tester) async {
+    final note = makeNote(uuid: 'note-1');
+    final data = NoteWithCitations(
+      note: note,
+      citations: [makeCitation(url: 'javascript:alert(1)')],
+    );
+
+    await tester.pumpWidget(
+      buildTestApp(
+        noteUuid: note.uuid,
+        value: AsyncData<NoteWithCitations?>(data),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('javascript:alert(1)'));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('renders resolved citations', (tester) async {

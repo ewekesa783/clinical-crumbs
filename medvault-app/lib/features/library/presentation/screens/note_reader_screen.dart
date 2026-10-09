@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/spacing_tokens.dart';
 import '../../domain/entities/citation.dart';
@@ -232,9 +233,37 @@ class _CitationTile extends StatelessWidget {
               ],
               if (citation.url != null) ...[
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  citation.url!,
-                  style: Theme.of(context).textTheme.bodySmall,
+                TextButton(
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    alignment: Alignment.centerLeft,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: () async {
+                    final uri = Uri.tryParse(citation.url!);
+                    if (uri == null ||
+                        (uri.scheme != "http" && uri.scheme != "https") ||
+                        uri.host.isEmpty) {
+                      return;
+                    }
+
+                    try {
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    } catch (_) {
+                      // Keep the reader usable if the external app cannot open.
+                    }
+                  },
+                  child: Text(
+                    citation.url!,
+                    textAlign: TextAlign.left,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          decoration: TextDecoration.underline,
+                        ),
+                  ),
                 ),
               ],
             ],

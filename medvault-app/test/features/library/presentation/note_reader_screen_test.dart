@@ -112,6 +112,28 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
+  testWidgets('shows a friendly message when note loading fails', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          noteReaderProvider('note-1').overrideWith(
+            (ref) async => throw Exception('database internal details'),
+          ),
+        ],
+        child: const MaterialApp(
+          home: NoteReaderScreen(noteUuid: 'note-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Unable to load this note'), findsOneWidget);
+    expect(find.text('Please try again later.'), findsOneWidget);
+    expect(find.textContaining('database internal details'), findsNothing);
+  });
+
   testWidgets('shows an outline bookmark for an unbookmarked note', (
     tester,
   ) async {

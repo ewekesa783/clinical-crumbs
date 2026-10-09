@@ -126,9 +126,21 @@ class _ChildTopicsSection extends StatelessWidget {
                   vertical: AppSpacing.sm,
                 ),
                 title: Text(child.title),
-                subtitle: child.shortDescription == null
-                    ? null
-                    : Text(child.shortDescription!),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (child.shortDescription != null) ...[
+                      Text(child.shortDescription!),
+                      const SizedBox(height: AppSpacing.xs),
+                    ],
+                    Text(
+                      '${_nodeTypeLabel(child.nodeType)}'
+                      '${child.noteCount > 0 ? ' · ${child.noteCount} notes' : ''}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => TaxonomyBrowserRoute(
                   nodeUuid: child.uuid,
@@ -278,4 +290,13 @@ class _Breadcrumbs extends StatelessWidget {
       ],
     );
   }
+}
+
+String _nodeTypeLabel(NodeType nodeType) {
+  return switch (nodeType) {
+    NodeType.subject => 'Subject',
+    NodeType.system => 'System',
+    NodeType.topic => 'Topic',
+    NodeType.custom => 'Custom',
+  };
 }

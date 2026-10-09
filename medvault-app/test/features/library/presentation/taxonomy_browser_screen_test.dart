@@ -19,6 +19,7 @@ TaxonomyNode makeNode({
   required int sortOrder,
   NodeType nodeType = NodeType.topic,
   String? shortDescription,
+  int noteCount = 0,
 }) {
   return TaxonomyNode(
     uuid: uuid,
@@ -30,7 +31,7 @@ TaxonomyNode makeNode({
     slug: slug,
     shortDescription: shortDescription,
     sortOrder: sortOrder,
-    noteCount: 0,
+    noteCount: noteCount,
     isUserCreated: false,
     createdAt: DateTime(2026, 1, 1),
     updatedAt: DateTime(2026, 1, 1),
@@ -103,6 +104,8 @@ void main() {
     depth: 1,
     sortOrder: 0,
     shortDescription: 'Diseases and disorders of the cardiovascular system.',
+    nodeType: NodeType.system,
+    noteCount: 4,
   );
 
   final neurology = makeNode(
@@ -142,6 +145,7 @@ void main() {
 
     expect(find.text('Cardiology'), findsOneWidget);
     expect(find.text('Neurology'), findsOneWidget);
+    expect(find.text('System · 4 notes'), findsOneWidget);
     expect(
       find.text('Diseases and disorders of the cardiovascular system.'),
       findsOneWidget,

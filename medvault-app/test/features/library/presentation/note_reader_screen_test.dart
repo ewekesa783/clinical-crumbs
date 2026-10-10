@@ -294,6 +294,79 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('shows an outline for headings in a long note', (tester) async {
+    final note = makeNote(
+      uuid: 'note-1',
+      bodyMarkdown: '''
+# Overview
+
+Introductory text.
+
+## Clinical Features
+
+Clinical details.
+
+### Neurological Features
+
+Neurological details.
+
+## Management
+
+Management details.
+''',
+    );
+
+    final data = NoteWithCitations(
+      note: note,
+      citations: const [],
+    );
+
+    await tester.pumpWidget(
+      buildTestApp(
+        noteUuid: note.uuid,
+        value: AsyncData<NoteWithCitations?>(data),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('On this page'), findsOneWidget);
+
+    await tester.tap(find.text('On this page'));
+    await tester.pumpAndSettle();
+
+    final outline = find.byKey(const ValueKey('note-outline'));
+    expect(
+      find.descendant(
+        of: outline,
+        matching: find.text('Clinical Features'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: outline,
+        matching: find.text('Neurological Features'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: outline,
+        matching: find.text('Management'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.descendant(
+        of: outline,
+        matching: find.text('Management'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('renders resolved citations', (tester) async {
     final note = makeNote(uuid: 'note-1');
 

@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../lib/app/router/app_router.dart';
-import '../../../../lib/core/sync/sync_metadata.dart';
-import '../../../../lib/features/library/domain/entities/taxonomy_node.dart';
-import '../../../../lib/features/library/presentation/providers/library_roots_provider.dart';
-import '../../../../lib/features/library/presentation/screens/library_screen.dart';
+import 'package:medvault_app/core/sync/sync_metadata.dart';
+import 'package:medvault_app/features/library/domain/entities/note.dart';
+import 'package:medvault_app/features/library/presentation/providers/note_search_provider.dart';
+import 'package:medvault_app/features/library/domain/entities/taxonomy_node.dart';
+import 'package:medvault_app/features/library/presentation/providers/library_roots_provider.dart';
+import 'package:medvault_app/features/library/presentation/screens/library_screen.dart';
 
 void main() {
   final nodes = [
@@ -121,5 +122,55 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No library content yet'), findsOneWidget);
+  });
+
+  testWidgets('searches notes and displays matching results', (tester) async {
+    final searchNote = Note(
+      uuid: 'heart-note',
+      topicUuid: 'cardiology-topic',
+      mode: Mode.detailedNotes,
+      title: 'Heart Failure',
+      bodyMarkdown: 'Assessment and management of heart failure.',
+      plainTextExtract: 'Assessment and management of heart failure.',
+      tags: const ['Cardiology'],
+      citationOrder: const [],
+      isPinned: false,
+      createdAt: DateTime(2026, 1, 1),
+      updatedAt: DateTime(2026, 1, 1),
+      sync: SyncMetadata(
+        lastModifiedLocal: DateTime(2026, 1, 1),
+        isDirty: false,
+        isDeleted: false,
+        deviceId: 'test-device',
+        syncRevision: 1,
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          libraryRootsProvider.overrideWith((ref) async => nodes),
+          noteSearchProvider('heart').overrideWith(
+            (ref) async => [searchNote],
+          ),
+        ],
+        child: const MaterialApp(
+          home: LibraryScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Medicine'), findsOneWidget);
+
+    await tester.enterText(
+      find.byType(TextField),
+      'heart',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Heart Failure'), findsOneWidget);
+    expect(find.textContaining('Cardiology'), findsOneWidget);
+    expect(find.text('Medicine'), findsNothing);
   });
 }

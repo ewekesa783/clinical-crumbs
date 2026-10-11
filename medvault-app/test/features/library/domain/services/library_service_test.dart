@@ -40,6 +40,19 @@ class _FakeNoteRepository implements NoteRepository {
   Future<Note?> getByUuid(String uuid) async => _store[uuid];
 
   @override
+  Future<List<Note>> search(String query) async {
+    final term = query.trim().toLowerCase();
+    if (term.isEmpty) return [];
+    return _store.values.where((note) {
+      return note.title.toLowerCase().contains(term) ||
+          (note.plainTextExtract ?? note.bodyMarkdown)
+              .toLowerCase()
+              .contains(term) ||
+          note.tags.any((tag) => tag.toLowerCase().contains(term));
+    }).toList();
+  }
+
+  @override
   Future<Note?> getByTopicAndMode(String topicUuid, Mode mode) async {
     for (final note in _store.values) {
       if (note.topicUuid == topicUuid && note.mode == mode) return note;
@@ -52,7 +65,8 @@ class _FakeCitationRepository implements CitationRepository {
   final Map<String, Citation> _store = {};
 
   @override
-  Future<void> save(Citation citation) async => _store[citation.uuid] = citation;
+  Future<void> save(Citation citation) async =>
+      _store[citation.uuid] = citation;
 
   @override
   Future<Citation?> getByUuid(String uuid) async => _store[uuid];
@@ -72,7 +86,8 @@ class _FakeBookmarkRepository implements BookmarkRepository {
   final Map<String, Bookmark> _store = {};
 
   @override
-  Future<void> save(Bookmark bookmark) async => _store[bookmark.uuid] = bookmark;
+  Future<void> save(Bookmark bookmark) async =>
+      _store[bookmark.uuid] = bookmark;
 
   @override
   Future<Bookmark?> getByUuid(String uuid) async => _store[uuid];
@@ -145,12 +160,15 @@ void main() {
     expect(entry!.uuid, 'generated-0');
   });
 
-  test('recordNoteViewed reuses the existing uuid on a repeat view '
+  test(
+      'recordNoteViewed reuses the existing uuid on a repeat view '
       '(via _uuidFor)', () async {
-    await service.recordNoteViewed('note-1', viewedAt: DateTime.utc(2026, 1, 1));
+    await service.recordNoteViewed('note-1',
+        viewedAt: DateTime.utc(2026, 1, 1));
     final first = await historyRepository.getByNoteUuid('note-1');
 
-    await service.recordNoteViewed('note-1', viewedAt: DateTime.utc(2026, 1, 2));
+    await service.recordNoteViewed('note-1',
+        viewedAt: DateTime.utc(2026, 1, 2));
     final second = await historyRepository.getByNoteUuid('note-1');
 
     expect(second!.uuid, first!.uuid);
@@ -186,7 +204,8 @@ void main() {
     expect(result.citations.first.uuid, 'cite-1');
   });
 
-  test('bookmarkNote then isNoteBookmarked reflects the new bookmark', () async {
+  test('bookmarkNote then isNoteBookmarked reflects the new bookmark',
+      () async {
     expect(await service.isNoteBookmarked('note-1'), isFalse);
     await service.bookmarkNote('note-1');
     expect(await service.isNoteBookmarked('note-1'), isTrue);

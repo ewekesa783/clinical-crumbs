@@ -47,4 +47,26 @@ class IsarNoteRepository implements NoteRepository {
     if (model == null) return null;
     return NoteMapper.toDomain(model);
   }
+
+  @override
+  Future<List<Note>> search(String query) async {
+    final term = query.trim();
+    if (term.isEmpty) return [];
+
+    final models = await _isar.noteModels
+        .filter()
+        .group(
+          (q) => q
+              .titleContains(term, caseSensitive: false)
+              .or()
+              .plainTextExtractContains(term, caseSensitive: false)
+              .or()
+              .bodyMarkdownContains(term, caseSensitive: false)
+              .or()
+              .tagsElementContains(term, caseSensitive: false),
+        )
+        .findAll();
+
+    return models.map(NoteMapper.toDomain).toList();
+  }
 }

@@ -81,4 +81,82 @@ void main() {
         await repository.getByTopicAndMode('topic-1', Mode.detailedNotes);
     expect(wrongMode, isNull);
   });
+
+  Note makeNote({
+    required String uuid,
+    required String topicUuid,
+    required String title,
+    String bodyMarkdown = 'Ordinary body text',
+    String? plainTextExtract,
+    List<String> tags = const [],
+    Mode mode = Mode.detailedNotes,
+  }) {
+    return Note(
+      uuid: uuid,
+      topicUuid: topicUuid,
+      mode: mode,
+      title: title,
+      bodyMarkdown: bodyMarkdown,
+      plainTextExtract: plainTextExtract,
+      tags: tags,
+      citationOrder: const [],
+      isPinned: false,
+      createdAt: DateTime.utc(2026, 1, 1),
+      updatedAt: DateTime.utc(2026, 1, 1),
+      sync: _sync(),
+    );
+  }
+
+  test('search matches titles, extracts, Markdown, and tags', () async {
+    await repository.save(makeNote(
+      uuid: 'title-note',
+      topicUuid: 'topic-title',
+      title: 'Heart Failure',
+    ));
+    await repository.save(makeNote(
+      uuid: 'extract-note',
+      topicUuid: 'topic-extract',
+      title: 'Respiratory Notes',
+      plainTextExtract: 'Management of ACUTE ASTHMA',
+    ));
+    await repository.save(makeNote(
+      uuid: 'body-note',
+      topicUuid: 'topic-body',
+      title: 'General Notes',
+      bodyMarkdown: 'Recognising diabetic ketoacidosis',
+    ));
+    await repository.save(makeNote(
+      uuid: 'tag-note',
+      topicUuid: 'topic-tag',
+      title: 'Revision Notes',
+      tags: const ['Paediatrics', 'Nephrology'],
+    ));
+
+    expect(
+      (await repository.search('heart')).map((note) => note.uuid),
+      contains('title-note'),
+    );
+    expect(
+      (await repository.search('acute asthma')).map((note) => note.uuid),
+      contains('extract-note'),
+    );
+    expect(
+      (await repository.search('ketoacidosis')).map((note) => note.uuid),
+      contains('body-note'),
+    );
+    expect(
+      (await repository.search('NEPHROLOGY')).map((note) => note.uuid),
+      contains('tag-note'),
+    );
+  });
+
+  test('search returns no results for a blank query', () async {
+    await repository.save(makeNote(
+      uuid: 'note-1',
+      topicUuid: 'topic-1',
+      title: 'Heart Failure',
+    ));
+
+    expect(await repository.search('   '), isEmpty);
+  });
 }

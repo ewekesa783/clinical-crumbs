@@ -34,6 +34,19 @@ class _FakeNoteRepository implements NoteRepository {
   Future<Note?> getByUuid(String uuid) async => _store[uuid];
 
   @override
+  Future<List<Note>> search(String query) async {
+    final term = query.trim().toLowerCase();
+    if (term.isEmpty) return [];
+    return _store.values.where((note) {
+      return note.title.toLowerCase().contains(term) ||
+          (note.plainTextExtract ?? note.bodyMarkdown)
+              .toLowerCase()
+              .contains(term) ||
+          note.tags.any((tag) => tag.toLowerCase().contains(term));
+    }).toList();
+  }
+
+  @override
   Future<Note?> getByTopicAndMode(String topicUuid, Mode mode) async {
     for (final note in _store.values) {
       if (note.topicUuid == topicUuid && note.mode == mode) return note;
@@ -51,7 +64,8 @@ SyncMetadata _sync() => SyncMetadata(
     );
 
 void main() {
-  test('getRecentlyViewedEntry resolves the Note, not just the History '
+  test(
+      'getRecentlyViewedEntry resolves the Note, not just the History '
       'entry (final A.3A DTO shape: Note + viewedAt only)', () async {
     final historyRepository = _FakeHistoryRepository();
     final noteRepository = _FakeNoteRepository();

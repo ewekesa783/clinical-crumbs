@@ -150,6 +150,33 @@ void main() {
     );
   });
 
+  test('saving an existing UUID updates the note without duplicating it',
+      () async {
+    final original = makeNote(
+      uuid: 'update-note',
+      topicUuid: 'topic-update',
+      title: 'Original title',
+      bodyMarkdown: 'Original body',
+    );
+    await repository.save(original);
+
+    final updated = makeNote(
+      uuid: 'update-note',
+      topicUuid: 'topic-update',
+      title: 'Updated title',
+      bodyMarkdown: 'Updated body',
+    );
+    await repository.save(updated);
+
+    final fetched = await repository.getByUuid('update-note');
+    final results = await repository.search('Updated title');
+
+    expect(fetched, isNotNull);
+    expect(fetched!.title, 'Updated title');
+    expect(fetched.bodyMarkdown, 'Updated body');
+    expect(results.where((note) => note.uuid == 'update-note').length, 1);
+  });
+
   test('search returns no results for a blank query', () async {
     await repository.save(makeNote(
       uuid: 'note-1',

@@ -116,9 +116,39 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         ),
       ),
       data: (notes) {
-        final sortedNotes = [...notes]
-          ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+        int relevance(Note note, String term) {
+          final normalizedTerm = term.toLowerCase();
 
+          if (note.title.toLowerCase().contains(normalizedTerm)) return 0;
+
+          if (note.tags.any(
+            (tag) => tag.toLowerCase().contains(normalizedTerm),
+          )) {
+            return 1;
+          }
+
+          final extract = note.plainTextExtract?.trim();
+          if (extract != null &&
+              extract.isNotEmpty &&
+              extract.toLowerCase().contains(normalizedTerm)) {
+            return 2;
+          }
+
+          if (note.bodyMarkdown.toLowerCase().contains(normalizedTerm)) {
+            return 3;
+          }
+
+          return 4;
+        }
+
+        final sortedNotes = [...notes]..sort((a, b) {
+            final relevanceComparison =
+                relevance(a, query).compareTo(relevance(b, query));
+
+            if (relevanceComparison != 0) return relevanceComparison;
+
+            return b.updatedAt.compareTo(a.updatedAt);
+          });
         if (sortedNotes.isEmpty) {
           return Center(
             child: Padding(

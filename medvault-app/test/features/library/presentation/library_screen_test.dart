@@ -173,4 +173,128 @@ void main() {
     expect(find.textContaining('Cardiology'), findsOneWidget);
     expect(find.text('Medicine'), findsNothing);
   });
+  testWidgets('ranks search results by relevance', (tester) async {
+    final titleMatch = Note(
+      uuid: 'asthma-title',
+      topicUuid: 'respiratory-topic',
+      mode: Mode.detailedNotes,
+      title: 'Asthma',
+      bodyMarkdown: 'Respiratory management notes.',
+      plainTextExtract: 'Respiratory management notes.',
+      tags: const ['Respiratory'],
+      citationOrder: const [],
+      isPinned: false,
+      createdAt: DateTime(2025, 1, 1),
+      updatedAt: DateTime(2025, 1, 1),
+      sync: SyncMetadata(
+        lastModifiedLocal: DateTime(2025, 1, 1),
+        isDirty: false,
+        isDeleted: false,
+        deviceId: 'test-device',
+        syncRevision: 1,
+      ),
+    );
+
+    final tagMatch = Note(
+      uuid: 'asthma-tag',
+      topicUuid: 'respiratory-topic',
+      mode: Mode.detailedNotes,
+      title: 'Respiratory Review',
+      bodyMarkdown: 'Review of respiratory conditions.',
+      plainTextExtract: 'Review of respiratory conditions.',
+      tags: const ['Asthma'],
+      citationOrder: const [],
+      isPinned: false,
+      createdAt: DateTime(2026, 1, 1),
+      updatedAt: DateTime(2026, 1, 1),
+      sync: SyncMetadata(
+        lastModifiedLocal: DateTime(2026, 1, 1),
+        isDirty: false,
+        isDeleted: false,
+        deviceId: 'test-device',
+        syncRevision: 1,
+      ),
+    );
+
+    final extractMatch = Note(
+      uuid: 'asthma-extract',
+      topicUuid: 'respiratory-topic',
+      mode: Mode.detailedNotes,
+      title: 'Emergency Notes',
+      bodyMarkdown: 'Emergency assessment notes.',
+      plainTextExtract: 'Asthma exacerbation assessment.',
+      tags: const ['Emergency'],
+      citationOrder: const [],
+      isPinned: false,
+      createdAt: DateTime(2026, 6, 1),
+      updatedAt: DateTime(2026, 6, 1),
+      sync: SyncMetadata(
+        lastModifiedLocal: DateTime(2026, 6, 1),
+        isDirty: false,
+        isDeleted: false,
+        deviceId: 'test-device',
+        syncRevision: 1,
+      ),
+    );
+
+    final bodyMatch = Note(
+      uuid: 'asthma-body',
+      topicUuid: 'respiratory-topic',
+      mode: Mode.detailedNotes,
+      title: 'General Review',
+      bodyMarkdown: 'Asthma treatment plan.',
+      plainTextExtract: 'General respiratory management.',
+      tags: const ['General'],
+      citationOrder: const [],
+      isPinned: false,
+      createdAt: DateTime(2026, 10, 1),
+      updatedAt: DateTime(2026, 10, 1),
+      sync: SyncMetadata(
+        lastModifiedLocal: DateTime(2026, 10, 1),
+        isDirty: false,
+        isDeleted: false,
+        deviceId: 'test-device',
+        syncRevision: 1,
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          libraryRootsProvider.overrideWith((ref) async => nodes),
+          noteSearchProvider('asthma').overrideWith(
+            (ref) async => [
+              bodyMatch,
+              extractMatch,
+              tagMatch,
+              titleMatch,
+            ],
+          ),
+        ],
+        child: MaterialApp.router(
+          routerConfig: GoRouter(
+            initialLocation: '/library',
+            routes: [
+              GoRoute(
+                path: '/library',
+                builder: (context, state) => const LibraryScreen(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'asthma');
+    await tester.pumpAndSettle();
+
+    final titleY = tester.getTopLeft(find.text('Asthma')).dy;
+    final tagY = tester.getTopLeft(find.text('Respiratory Review')).dy;
+    final extractY = tester.getTopLeft(find.text('Emergency Notes')).dy;
+    final bodyY = tester.getTopLeft(find.text('General Review')).dy;
+
+    expect(titleY, lessThan(tagY));
+    expect(tagY, lessThan(extractY));
+    expect(extractY, lessThan(bodyY));
+  });
 }

@@ -198,6 +198,35 @@ void main() {
     expect(find.text('Medicine'), findsNothing);
   });
 
+  testWidgets('clears search and restores library roots', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          libraryRootsProvider.overrideWith((ref) async => nodes),
+          noteSearchProvider('unknown').overrideWith((ref) async => []),
+        ],
+        child: const MaterialApp(
+          home: LibraryScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'unknown');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No notes found for "unknown"'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('No notes found for "unknown"'), findsNothing);
+    expect(find.text('Medicine'), findsOneWidget);
+    expect(find.text('Surgery'), findsOneWidget);
+  });
+
   testWidgets('ranks search results by relevance', (tester) async {
     final titleMatch = Note(
       uuid: 'asthma-title',

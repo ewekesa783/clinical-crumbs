@@ -172,6 +172,10 @@ void main() {
 
     expect(find.text('Heart Failure'), findsOneWidget);
     expect(find.textContaining('Cardiology'), findsOneWidget);
+    expect(
+      find.textContaining('Assessment and management of heart failure.'),
+      findsOneWidget,
+    );
     expect(find.text('Medicine'), findsNothing);
   });
   testWidgets('displays an empty state when search finds no notes', (

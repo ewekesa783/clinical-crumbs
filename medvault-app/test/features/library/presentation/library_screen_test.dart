@@ -174,6 +174,30 @@ void main() {
     expect(find.textContaining('Cardiology'), findsOneWidget);
     expect(find.text('Medicine'), findsNothing);
   });
+  testWidgets('displays an empty state when search finds no notes', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          libraryRootsProvider.overrideWith((ref) async => nodes),
+          noteSearchProvider('unknown').overrideWith((ref) async => []),
+        ],
+        child: const MaterialApp(
+          home: LibraryScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'unknown');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No notes found for "unknown"'), findsOneWidget);
+    expect(find.text('Medicine'), findsNothing);
+  });
+
   testWidgets('ranks search results by relevance', (tester) async {
     final titleMatch = Note(
       uuid: 'asthma-title',

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,27 +22,45 @@ class LibraryScreen extends ConsumerStatefulWidget {
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
   String _query = '';
+  String _debouncedQuery = '';
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   void _onSearchChanged(String value) {
-    setState(() => _query = value.trim());
+    final query = value.trim();
+
+    setState(() {
+      _query = query;
+    });
+
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      setState(() {
+        _debouncedQuery = query;
+      });
+    });
   }
 
   void _clearSearch() {
+    _searchDebounce?.cancel();
     _searchController.clear();
-    setState(() => _query = '');
+
+    setState(() {
+      _query = '';
+      _debouncedQuery = '';
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final searching = _query.length >= 2;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Library'),
@@ -74,8 +93,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             ),
           ),
           Expanded(
-            child:
-                searching ? _buildSearchResults(_query) : _buildLibraryRoots(),
+            child: _query.length < 2
+                ? _buildLibraryRoots()
+                : _query != _debouncedQuery
+                    ? const Center(
+                        child: CircularProgressIndicator(),
+                      )
+                    : _buildSearchResults(_debouncedQuery),
           ),
         ],
       ),

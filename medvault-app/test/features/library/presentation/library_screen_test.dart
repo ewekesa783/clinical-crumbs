@@ -167,6 +167,7 @@ void main() {
       find.byType(TextField),
       'heart',
     );
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
 
     expect(find.text('Heart Failure'), findsOneWidget);
@@ -286,6 +287,7 @@ void main() {
     );
 
     await tester.enterText(find.byType(TextField), 'asthma');
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
 
     final titleY = tester.getTopLeft(find.text('Asthma')).dy;

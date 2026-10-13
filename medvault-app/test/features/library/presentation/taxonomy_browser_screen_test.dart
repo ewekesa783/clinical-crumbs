@@ -300,4 +300,26 @@ void main() {
     );
     expect(find.text('Learning material'), findsNothing);
   });
+
+  testWidgets('hides internal details when a section fails to load',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          taxonomyBrowserProvider('medicine').overrideWith(
+            (ref) async => throw Exception('sensitive internal detail'),
+          ),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(useMaterial3: true),
+          home: const TaxonomyBrowserScreen(nodeUuid: 'medicine'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Unable to load this section'), findsOneWidget);
+    expect(find.text('Please try again later.'), findsOneWidget);
+    expect(find.textContaining('sensitive internal detail'), findsNothing);
+  });
 }

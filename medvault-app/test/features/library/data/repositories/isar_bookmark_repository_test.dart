@@ -52,4 +52,33 @@ void main() {
     final bookmarks = await repository.getByNoteUuid('note-1');
     expect(bookmarks, hasLength(2));
   });
+
+  test('saving an existing bookmark uuid updates its record', () async {
+    await repository.save(Bookmark(
+      uuid: 'bookmark-1',
+      noteUuid: 'note-1',
+      label: 'Original',
+      createdAt: DateTime.utc(2026, 1, 1),
+      sync: _sync(),
+    ));
+
+    await repository.save(Bookmark(
+      uuid: 'bookmark-1',
+      noteUuid: 'note-1',
+      label: 'Updated',
+      createdAt: DateTime.utc(2026, 1, 2),
+      sync: _sync(),
+    ));
+
+    final fetched = await repository.getByUuid('bookmark-1');
+    final bookmarks = await repository.getByNoteUuid('note-1');
+
+    expect(fetched, isNotNull);
+    expect(fetched!.label, 'Updated');
+    expect(
+      fetched.createdAt.millisecondsSinceEpoch,
+      DateTime.utc(2026, 1, 2).millisecondsSinceEpoch,
+    );
+    expect(bookmarks, hasLength(1));
+  });
 }

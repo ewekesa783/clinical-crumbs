@@ -178,6 +178,54 @@ void main() {
     );
     expect(find.text('Medicine'), findsNothing);
   });
+  testWidgets('waits for the search debounce before showing results',
+      (tester) async {
+    final searchNote = Note(
+      uuid: 'heart-note',
+      topicUuid: 'cardiology-topic',
+      mode: Mode.detailedNotes,
+      title: 'Heart Failure',
+      bodyMarkdown: 'Assessment and management of heart failure.',
+      plainTextExtract: 'Assessment and management of heart failure.',
+      tags: const ['Cardiology'],
+      citationOrder: const [],
+      isPinned: false,
+      createdAt: DateTime(2026, 1, 1),
+      updatedAt: DateTime(2026, 1, 1),
+      sync: SyncMetadata(
+        lastModifiedLocal: DateTime(2026, 1, 1),
+        isDirty: false,
+        isDeleted: false,
+        deviceId: 'test-device',
+        syncRevision: 1,
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          libraryRootsProvider.overrideWith((ref) async => nodes),
+          noteSearchProvider('heart').overrideWith(
+            (ref) async => [searchNote],
+          ),
+        ],
+        child: const MaterialApp(home: LibraryScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'heart');
+    await tester.pump(const Duration(milliseconds: 299));
+
+    expect(find.text('Heart Failure'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Heart Failure'), findsOneWidget);
+  });
+
   testWidgets('displays an empty state when search finds no notes', (
     tester,
   ) async {

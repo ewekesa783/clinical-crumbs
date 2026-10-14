@@ -175,6 +175,69 @@ void main() {
     expect(second.viewedAt, DateTime.utc(2026, 1, 2));
   });
 
+  test('getTopicNotes returns available notes across all modes', () async {
+    final now = DateTime.utc(2026, 1, 1);
+    await taxonomyRepository.save(TaxonomyNode(
+      uuid: 'topic-1',
+      path: 'subject-1/topic-1',
+      depth: 1,
+      nodeType: NodeType.topic,
+      title: 'Topic',
+      slug: 'topic',
+      sortOrder: 0,
+      noteCount: 3,
+      isUserCreated: false,
+      createdAt: now,
+      updatedAt: now,
+      sync: _sync(),
+    ));
+
+    final expectedNotes = <Note>[];
+    for (final mode in [
+      Mode.detailedNotes,
+      Mode.quickReview,
+    ]) {
+      final note = Note(
+        uuid: 'note-${mode.name}',
+        topicUuid: 'topic-1',
+        mode: mode,
+        title: mode.name,
+        bodyMarkdown: 'Body for ${mode.name}',
+        tags: const [],
+        citationOrder: const [],
+        isPinned: false,
+        createdAt: now,
+        updatedAt: now,
+        sync: _sync(),
+      );
+      expectedNotes.add(note);
+      await noteRepository.save(note);
+    }
+
+    final result = await service.getTopicNotes('topic-1');
+
+    expect(result.topicUuid, 'topic-1');
+    expect(result.notes, hasLength(2));
+    expect(result.notes.map((note) => note.uuid).toSet(),
+        expectedNotes.map((note) => note.uuid).toSet());
+    expect(
+        result.notes.any((note) => note.mode == Mode.visualLearning), isFalse);
+  });
+
+  test('getTopicNotes throws StateError when the topic does not exist',
+      () async {
+    await expectLater(
+      service.getTopicNotes('missing-topic'),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'No taxonomy node found for uuid "missing-topic".',
+        ),
+      ),
+    );
+  });
+
   test('getNoteWithCitations resolves citations in citationOrder', () async {
     await citationRepository.save(Citation(
       uuid: 'cite-1',

@@ -55,6 +55,39 @@ void main() {
     expect(path.map((n) => n.uuid).toList(), ['root', 'child', 'grandchild']);
   });
 
+  test('getBreadcrumbPath throws when the target node is missing', () async {
+    final repository = _FakeTaxonomyRepository();
+    final service = TaxonomyNavigationService(taxonomyRepository: repository);
+
+    await expectLater(
+      service.getBreadcrumbPath('missing-target'),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'No taxonomy node found for uuid "missing-target".',
+        ),
+      ),
+    );
+  });
+
+  test('getBreadcrumbPath throws when an ancestor is missing', () async {
+    final repository = _FakeTaxonomyRepository();
+    await repository.save(_node('child', 'missing-parent'));
+    final service = TaxonomyNavigationService(taxonomyRepository: repository);
+
+    await expectLater(
+      service.getBreadcrumbPath('child'),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'No taxonomy node found for uuid "missing-parent".',
+        ),
+      ),
+    );
+  });
+
   // No test for getSiblings(): that method does not exist on this
   // service (removed in Task A.2A). Sibling lookup, if ever needed, is
   // performed via TaxonomyRepository.getChildren(node.parentUuid)

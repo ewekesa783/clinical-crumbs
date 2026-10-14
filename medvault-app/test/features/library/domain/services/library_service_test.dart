@@ -273,6 +273,22 @@ void main() {
     expect(result.citations.first.uuid, 'cite-1');
   });
 
+  test('bookmarkNote creates distinct bookmarks and preserves labels',
+      () async {
+    final first = await service.bookmarkNote('note-1', label: 'First label');
+    final second = await service.bookmarkNote('note-1', label: 'Second label');
+
+    final saved = await bookmarkRepository.getByNoteUuid('note-1');
+
+    expect(first.uuid, isNot(second.uuid));
+    expect(first.label, 'First label');
+    expect(second.label, 'Second label');
+    expect(saved, hasLength(2));
+    expect(saved.map((bookmark) => bookmark.label).toSet(),
+        {'First label', 'Second label'});
+    expect(await service.isNoteBookmarked('note-1'), isTrue);
+  });
+
   test('bookmarkNote then isNoteBookmarked reflects the new bookmark',
       () async {
     expect(await service.isNoteBookmarked('note-1'), isFalse);

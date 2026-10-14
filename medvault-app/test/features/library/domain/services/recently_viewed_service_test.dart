@@ -110,4 +110,21 @@ void main() {
 
     expect(await service.getRecentlyViewedEntry('note-404'), isNull);
   });
+
+  test('returns null when history exists but its note is missing', () async {
+    final historyRepository = _FakeHistoryRepository();
+    await historyRepository.save(History(
+      uuid: 'history-1',
+      noteUuid: 'note-404',
+      viewedAt: DateTime.utc(2026, 1, 5),
+      sync: _sync(),
+    ));
+
+    final service = RecentlyViewedService(
+      historyRepository: historyRepository,
+      noteRepository: _FakeNoteRepository(),
+    );
+
+    expect(await service.getRecentlyViewedEntry('note-404'), isNull);
+  });
 }

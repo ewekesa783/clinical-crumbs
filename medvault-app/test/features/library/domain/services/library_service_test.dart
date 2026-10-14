@@ -238,6 +238,12 @@ void main() {
     );
   });
 
+  test('getNoteWithCitations returns null when the note is missing', () async {
+    final result = await service.getNoteWithCitations('missing-note');
+
+    expect(result, isNull);
+  });
+
   test('getNoteWithCitations resolves citations in citationOrder', () async {
     await citationRepository.save(Citation(
       uuid: 'cite-1',

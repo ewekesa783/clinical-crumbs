@@ -137,6 +137,10 @@ void main() {
       contains('title-note'),
     );
     expect(
+      (await repository.search('  heart  ')).map((note) => note.uuid),
+      contains('title-note'),
+    );
+    expect(
       (await repository.search('acute asthma')).map((note) => note.uuid),
       contains('extract-note'),
     );

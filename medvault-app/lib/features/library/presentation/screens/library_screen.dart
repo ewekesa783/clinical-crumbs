@@ -131,7 +131,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                error.toString(),
+                'Please try again later.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
@@ -258,7 +258,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                error.toString(),
+                'Please try again later.',
                 style: Theme.of(context).textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),

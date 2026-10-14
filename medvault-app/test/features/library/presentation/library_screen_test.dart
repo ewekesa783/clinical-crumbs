@@ -356,4 +356,54 @@ void main() {
     expect(tagY, lessThan(extractY));
     expect(extractY, lessThan(bodyY));
   });
+
+  testWidgets('hides internal details when the library fails to load',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          libraryRootsProvider.overrideWith(
+            (ref) async => throw Exception('sensitive internal detail'),
+          ),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(useMaterial3: true),
+          home: const LibraryScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Unable to load the library'), findsOneWidget);
+    expect(find.text('Please try again later.'), findsOneWidget);
+    expect(find.textContaining('sensitive internal detail'), findsNothing);
+  });
+
+  testWidgets('hides internal details when note search fails', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          libraryRootsProvider.overrideWith((ref) async => nodes),
+          noteSearchProvider('heart').overrideWith(
+            (ref) async => throw Exception('sensitive internal detail'),
+          ),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(useMaterial3: true),
+          home: const LibraryScreen(),
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      find.byType(TextField),
+      'heart',
+    );
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Unable to search notes'), findsOneWidget);
+    expect(find.text('Please try again later.'), findsOneWidget);
+    expect(find.textContaining('sensitive internal detail'), findsNothing);
+  });
 }

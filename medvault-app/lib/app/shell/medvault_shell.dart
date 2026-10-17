@@ -8,12 +8,14 @@ class MedVaultShell extends StatelessWidget {
     required this.child,
     required this.onHomeSelected,
     required this.onLibrarySelected,
+    required this.onSettingsSelected,
     super.key,
   });
 
   final Widget child;
   final VoidCallback onHomeSelected;
   final VoidCallback onLibrarySelected;
+  final VoidCallback onSettingsSelected;
 
   static const double _mobileBreakpoint = 720;
 
@@ -23,6 +25,8 @@ class MedVaultShell extends StatelessWidget {
     final isLibrary = location == '/library' ||
         location.startsWith('/library/node/') ||
         location.startsWith('/library/note/');
+    final isSettings = location == '/settings';
+    final selectedIndex = isSettings ? 2 : (isLibrary ? 1 : 0);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -32,12 +36,15 @@ class MedVaultShell extends StatelessWidget {
           return Scaffold(
             body: child,
             bottomNavigationBar: NavigationBar(
-              selectedIndex: isLibrary ? 1 : 0,
+              selectedIndex: selectedIndex,
               onDestinationSelected: (index) {
-                if (index == 0) {
-                  onHomeSelected();
-                } else {
-                  onLibrarySelected();
+                switch (index) {
+                  case 0:
+                    onHomeSelected();
+                  case 1:
+                    onLibrarySelected();
+                  case 2:
+                    onSettingsSelected();
                 }
               },
               destinations: const [
@@ -50,6 +57,11 @@ class MedVaultShell extends StatelessWidget {
                   icon: Icon(Icons.menu_book_outlined),
                   selectedIcon: Icon(Icons.menu_book),
                   label: 'Library',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.settings_outlined),
+                  selectedIcon: Icon(Icons.settings),
+                  label: 'Settings',
                 ),
               ],
             ),
@@ -81,12 +93,15 @@ class MedVaultShell extends StatelessWidget {
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           NavigationRail(
-                            selectedIndex: isLibrary ? 1 : 0,
+                            selectedIndex: selectedIndex,
                             onDestinationSelected: (index) {
-                              if (index == 0) {
-                                onHomeSelected();
-                              } else {
-                                onLibrarySelected();
+                              switch (index) {
+                                case 0:
+                                  onHomeSelected();
+                                case 1:
+                                  onLibrarySelected();
+                                case 2:
+                                  onSettingsSelected();
                               }
                             },
                             labelType: NavigationRailLabelType.all,
@@ -100,6 +115,11 @@ class MedVaultShell extends StatelessWidget {
                                 icon: Icon(Icons.menu_book_outlined),
                                 selectedIcon: Icon(Icons.menu_book),
                                 label: Text('Library'),
+                              ),
+                              NavigationRailDestination(
+                                icon: Icon(Icons.settings_outlined),
+                                selectedIcon: Icon(Icons.settings),
+                                label: Text('Settings'),
                               ),
                             ],
                           ),

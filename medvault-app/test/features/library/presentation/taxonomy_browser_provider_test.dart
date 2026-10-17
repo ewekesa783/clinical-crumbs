@@ -28,6 +28,8 @@ class _FakeTaxonomyRepository implements TaxonomyRepository {
   @override
   Future<List<TaxonomyNode>> getChildren(String parentUuid) async =>
       nodes.values.where((node) => node.parentUuid == parentUuid).toList();
+  @override
+  Future<List<TaxonomyNode>> getAll() async => nodes.values.toList();
 }
 
 class _FakeLibraryService extends LibraryService {
@@ -61,6 +63,9 @@ class _FakeNoteRepository implements NoteRepository {
   @override
   Future<Note?> getByTopicAndMode(String topicUuid, Mode mode) async => null;
   @override
+  @override
+  Future<List<Note>> getAll() async => [];
+
   Future<List<Note>> search(String query) async => [];
 }
 
@@ -78,8 +83,14 @@ class _FakeBookmarkRepository implements BookmarkRepository {
   Future<void> save(Bookmark bookmark) async {}
   @override
   Future<Bookmark?> getByUuid(String uuid) async => null;
+
+  @override
+  Future<void> deleteByNoteUuid(String noteUuid) async {}
   @override
   Future<List<Bookmark>> getByNoteUuid(String noteUuid) async => [];
+
+  @override
+  Future<List<Bookmark>> getRecent({int limit = 10}) async => [];
 }
 
 class _FakeHistoryRepository implements HistoryRepository {
@@ -89,6 +100,9 @@ class _FakeHistoryRepository implements HistoryRepository {
   Future<History?> getByUuid(String uuid) async => null;
   @override
   Future<History?> getByNoteUuid(String noteUuid) async => null;
+
+  @override
+  Future<List<History>> getRecent({int? limit = 10}) async => [];
 }
 
 class _UnusedTaxonomyRepository implements TaxonomyRepository {
@@ -100,6 +114,8 @@ class _UnusedTaxonomyRepository implements TaxonomyRepository {
   @override
   Future<List<TaxonomyNode>> getChildren(String parentUuid) async =>
       throw UnimplementedError();
+  @override
+  Future<List<TaxonomyNode>> getAll() async => throw UnimplementedError();
 }
 
 SyncMetadata _sync() => SyncMetadata(

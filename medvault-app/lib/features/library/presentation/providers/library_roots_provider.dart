@@ -25,3 +25,24 @@ Future<List<TaxonomyNode>> libraryRoots(LibraryRootsRef ref) async {
   nodes.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
   return nodes;
 }
+
+/// Loads the complete taxonomy for library-wide filtering.
+@riverpod
+Future<List<TaxonomyNode>> libraryTaxonomyNodes(
+  LibraryTaxonomyNodesRef ref,
+) async {
+  final repository = await ref.watch(taxonomyRepositoryProvider.future);
+  final nodes = await repository.getAll();
+
+  nodes.sort((a, b) {
+    final depthComparison = a.depth.compareTo(b.depth);
+    if (depthComparison != 0) return depthComparison;
+
+    final pathComparison = a.path.compareTo(b.path);
+    if (pathComparison != 0) return pathComparison;
+
+    return a.sortOrder.compareTo(b.sortOrder);
+  });
+
+  return nodes;
+}

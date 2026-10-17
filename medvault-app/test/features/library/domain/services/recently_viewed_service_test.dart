@@ -22,6 +22,14 @@ class _FakeHistoryRepository implements HistoryRepository {
     }
     return null;
   }
+
+  @override
+  Future<List<History>> getRecent({int? limit = 10}) async {
+    if (limit != null && limit <= 0) return [];
+    final entries = _store.values.toList()
+      ..sort((a, b) => b.viewedAt.compareTo(a.viewedAt));
+    return (limit == null ? entries : entries.take(limit)).toList();
+  }
 }
 
 class _FakeNoteRepository implements NoteRepository {
@@ -34,6 +42,9 @@ class _FakeNoteRepository implements NoteRepository {
   Future<Note?> getByUuid(String uuid) async => _store[uuid];
 
   @override
+  @override
+  Future<List<Note>> getAll() async => [];
+
   Future<List<Note>> search(String query) async {
     final term = query.trim().toLowerCase();
     if (term.isEmpty) return [];

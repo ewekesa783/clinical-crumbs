@@ -42,4 +42,15 @@ class IsarHistoryRepository implements HistoryRepository {
     if (model == null) return null;
     return HistoryMapper.toDomain(model);
   }
+
+  @override
+  Future<List<History>> getRecent({int? limit = 10}) async {
+    if (limit != null && limit <= 0) return [];
+
+    final models = await _isar.historyModels.where().findAll()
+      ..sort((a, b) => b.viewedAt.compareTo(a.viewedAt));
+
+    final selected = limit == null ? models : models.take(limit);
+    return selected.map(HistoryMapper.toDomain).toList();
+  }
 }

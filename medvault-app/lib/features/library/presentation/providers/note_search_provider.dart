@@ -12,3 +12,10 @@ Future<List<Note>> noteSearch(
   final repository = await ref.watch(noteRepositoryProvider.future);
   return repository.search(query);
 }
+
+/// Loads all notes so mode and taxonomy filters work without a text query.
+@riverpod
+Future<List<Note>> allLibraryNotes(AllLibraryNotesRef ref) async {
+  final repository = await ref.watch(noteRepositoryProvider.future);
+  return repository.getAll();
+}

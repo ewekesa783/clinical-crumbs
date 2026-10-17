@@ -28,6 +28,8 @@ class _FakeTaxonomyRepository implements TaxonomyRepository {
   @override
   Future<List<TaxonomyNode>> getChildren(String parentUuid) async =>
       _store.values.where((n) => n.parentUuid == parentUuid).toList();
+  @override
+  Future<List<TaxonomyNode>> getAll() async => _store.values.toList();
 }
 
 class _FakeNoteRepository implements NoteRepository {
@@ -40,6 +42,8 @@ class _FakeNoteRepository implements NoteRepository {
   Future<Note?> getByUuid(String uuid) async => _store[uuid];
 
   @override
+  Future<List<Note>> getAll() async => _store.values.toList();
+
   Future<List<Note>> search(String query) async {
     final term = query.trim().toLowerCase();
     if (term.isEmpty) return [];
@@ -93,8 +97,21 @@ class _FakeBookmarkRepository implements BookmarkRepository {
   Future<Bookmark?> getByUuid(String uuid) async => _store[uuid];
 
   @override
+  Future<void> deleteByNoteUuid(String noteUuid) async {
+    _store.removeWhere((_, bookmark) => bookmark.noteUuid == noteUuid);
+  }
+
+  @override
   Future<List<Bookmark>> getByNoteUuid(String noteUuid) async =>
       _store.values.where((b) => b.noteUuid == noteUuid).toList();
+
+  @override
+  Future<List<Bookmark>> getRecent({int limit = 10}) async {
+    if (limit <= 0) return [];
+    final entries = _store.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return entries.take(limit).toList();
+  }
 }
 
 class _FakeHistoryRepository implements HistoryRepository {
@@ -112,6 +129,14 @@ class _FakeHistoryRepository implements HistoryRepository {
       if (h.noteUuid == noteUuid) return h;
     }
     return null;
+  }
+
+  @override
+  Future<List<History>> getRecent({int? limit = 10}) async {
+    if (limit != null && limit <= 0) return [];
+    final entries = _store.values.toList()
+      ..sort((a, b) => b.viewedAt.compareTo(a.viewedAt));
+    return (limit == null ? entries : entries.take(limit)).toList();
   }
 }
 
@@ -150,6 +175,192 @@ void main() {
       createSyncMetadata: _sync,
       now: () => DateTime.utc(2026, 6, 1),
     );
+  });
+
+  Future<void> saveTopic(String uuid, {NodeType type = NodeType.topic}) async {
+    final now = DateTime.utc(2026, 1, 1);
+    await taxonomyRepository.save(TaxonomyNode(
+      uuid: uuid,
+      path: uuid,
+      depth: type == NodeType.topic ? 2 : 1,
+      nodeType: type,
+      title: uuid,
+      slug: uuid,
+      sortOrder: 0,
+      noteCount: 0,
+      isUserCreated: true,
+      createdAt: now,
+      updatedAt: now,
+      sync: _sync(),
+    ));
+  }
+
+  Note makeEditableNote({
+    String uuid = 'note-1',
+    String topicUuid = 'topic-1',
+    Mode mode = Mode.detailedNotes,
+    SyncMetadata? sync,
+  }) {
+    final createdAt = DateTime.utc(2025, 1, 1);
+    return Note(
+      uuid: uuid,
+      topicUuid: topicUuid,
+      mode: mode,
+      title: 'Original title',
+      bodyMarkdown: 'User-authored body must remain untouched.',
+      plainTextExtract: 'Original extract',
+      tags: const ['old-tag'],
+      citationOrder: const ['citation-1'],
+      isPinned: true,
+      createdAt: createdAt,
+      updatedAt: DateTime.utc(2026, 1, 1),
+      sync: sync ?? SyncMetadata(
+        remoteId: 'remote-1',
+        lastModifiedLocal: DateTime.utc(2026, 1, 1),
+        lastSyncedAt: DateTime.utc(2026, 1, 2),
+        isDirty: false,
+        isDeleted: false,
+        deviceId: 'device-original',
+        syncRevision: 7,
+      ),
+    );
+  }
+
+  test('updateNoteMetadata preserves content and sync identity', () async {
+    await saveTopic('topic-1');
+    await saveTopic('topic-2');
+    final original = makeEditableNote();
+    await noteRepository.save(original);
+
+    final updated = await service.updateNoteMetadata(
+      noteUuid: original.uuid,
+      title: '  Updated title  ',
+      tags: [' alpha ', 'ALPHA', '', 'beta'],
+      topicUuid: 'topic-2',
+    );
+
+    expect(updated.uuid, original.uuid);
+    expect(updated.topicUuid, 'topic-2');
+    expect(updated.title, 'Updated title');
+    expect(updated.tags, ['alpha', 'beta']);
+    expect(updated.mode, original.mode);
+    expect(updated.bodyMarkdown, original.bodyMarkdown);
+    expect(updated.plainTextExtract, original.plainTextExtract);
+    expect(updated.citationOrder, original.citationOrder);
+    expect(updated.isPinned, original.isPinned);
+    expect(updated.createdAt, original.createdAt);
+    expect(updated.updatedAt, DateTime.utc(2026, 6, 1));
+    expect(updated.sync.remoteId, 'remote-1');
+    expect(updated.sync.lastSyncedAt, DateTime.utc(2026, 1, 2));
+    expect(updated.sync.deviceId, 'device-original');
+    expect(updated.sync.isDirty, isTrue);
+    expect(updated.sync.isDeleted, isFalse);
+    expect(updated.sync.syncRevision, 8);
+
+    final stored = await noteRepository.getByUuid(original.uuid);
+    expect(stored, isNotNull);
+    expect(stored!.title, 'Updated title');
+    expect(stored.bodyMarkdown, original.bodyMarkdown);
+  });
+
+  test('updateNoteMetadata rejects an empty title without saving', () async {
+    await saveTopic('topic-1');
+    final original = makeEditableNote();
+    await noteRepository.save(original);
+
+    await expectLater(
+      service.updateNoteMetadata(
+        noteUuid: original.uuid,
+        title: '  ',
+        tags: const [],
+        topicUuid: 'topic-1',
+      ),
+      throwsArgumentError,
+    );
+    expect((await noteRepository.getByUuid(original.uuid))!.title,
+        original.title);
+  });
+
+  test('updateNoteMetadata rejects a missing destination topic', () async {
+    await saveTopic('topic-1');
+    final original = makeEditableNote();
+    await noteRepository.save(original);
+
+    await expectLater(
+      service.updateNoteMetadata(
+        noteUuid: original.uuid,
+        title: 'Updated',
+        tags: const [],
+        topicUuid: 'missing-topic',
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect((await noteRepository.getByUuid(original.uuid))!.topicUuid,
+        original.topicUuid);
+  });
+
+  test('updateNoteMetadata rejects moving into an occupied mode', () async {
+    await saveTopic('topic-1');
+    await saveTopic('topic-2');
+    await noteRepository.save(makeEditableNote());
+    await noteRepository.save(makeEditableNote(
+      uuid: 'note-2',
+      topicUuid: 'topic-2',
+    ));
+
+    await expectLater(
+      service.updateNoteMetadata(
+        noteUuid: 'note-1',
+        title: 'Updated',
+        tags: const [],
+        topicUuid: 'topic-2',
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect((await noteRepository.getByUuid('note-1'))!.topicUuid, 'topic-1');
+  });
+
+  test('updateNoteMetadata rejects a non-topic destination', () async {
+    await saveTopic('topic-1');
+    await saveTopic('subject-1', type: NodeType.subject);
+    final original = makeEditableNote();
+    await noteRepository.save(original);
+
+    await expectLater(
+      service.updateNoteMetadata(
+        noteUuid: original.uuid,
+        title: 'Updated',
+        tags: const [],
+        topicUuid: 'subject-1',
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  test('updateNoteMetadata rejects deleted notes', () async {
+    await saveTopic('topic-1');
+    final original = makeEditableNote(
+      sync: SyncMetadata(
+        lastModifiedLocal: DateTime.utc(2026, 1, 1),
+        isDirty: true,
+        isDeleted: true,
+        deviceId: 'device-1',
+        syncRevision: 2,
+      ),
+    );
+    await noteRepository.save(original);
+
+    await expectLater(
+      service.updateNoteMetadata(
+        noteUuid: original.uuid,
+        title: 'Updated',
+        tags: const [],
+        topicUuid: 'topic-1',
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect((await noteRepository.getByUuid(original.uuid))!.title,
+        original.title);
   });
 
   test('recordNoteViewed creates a new History entry on first view', () async {
@@ -271,6 +482,110 @@ void main() {
     expect(result, isNotNull);
     expect(result!.citations, hasLength(1));
     expect(result.citations.first.uuid, 'cite-1');
+  });
+
+  test('getRecentlyViewedNotes returns notes in recency order', () async {
+    final now = DateTime.utc(2026, 1, 1);
+    for (final item in [
+      ('note-old', 'Older note', DateTime.utc(2026, 1, 1)),
+      ('note-new', 'Newer note', DateTime.utc(2026, 1, 3)),
+      ('note-middle', 'Middle note', DateTime.utc(2026, 1, 2)),
+    ]) {
+      await noteRepository.save(Note(
+        uuid: item.$1,
+        topicUuid: 'topic-1',
+        mode: Mode.detailedNotes,
+        title: item.$2,
+        bodyMarkdown: 'Synthetic test fixture',
+        tags: const [],
+        citationOrder: const [],
+        isPinned: false,
+        createdAt: now,
+        updatedAt: now,
+        sync: _sync(),
+      ));
+      await historyRepository.save(History(
+        uuid: 'history-${item.$1}',
+        noteUuid: item.$1,
+        viewedAt: item.$3,
+        sync: _sync(),
+      ));
+    }
+
+    final notes = await service.getRecentlyViewedNotes();
+
+    expect(notes.map((note) => note.uuid).toList(),
+        ['note-new', 'note-middle', 'note-old']);
+    expect(await service.getRecentlyViewedNotes(limit: 2), hasLength(2));
+    expect(await service.getRecentlyViewedNotes(limit: 0), isEmpty);
+  });
+
+  test('getRecentlyViewedNotes skips history for missing notes', () async {
+    await historyRepository.save(History(
+      uuid: 'history-missing',
+      noteUuid: 'deleted-note',
+      viewedAt: DateTime.utc(2026, 1, 1),
+      sync: _sync(),
+    ));
+
+    expect(await service.getRecentlyViewedNotes(), isEmpty);
+  });
+
+  test('getBookmarkedNotes returns unique existing notes newest first',
+      () async {
+    final now = DateTime.utc(2026, 1, 1);
+    for (final item in [
+      ('note-a', 'Note A'),
+      ('note-b', 'Note B'),
+    ]) {
+      await noteRepository.save(Note(
+        uuid: item.$1,
+        topicUuid: 'topic-1',
+        mode: Mode.detailedNotes,
+        title: item.$2,
+        bodyMarkdown: 'Synthetic test fixture',
+        tags: const [],
+        citationOrder: const [],
+        isPinned: false,
+        createdAt: now,
+        updatedAt: now,
+        sync: _sync(),
+      ));
+    }
+
+    await bookmarkRepository.save(Bookmark(
+      uuid: 'bookmark-a-old',
+      noteUuid: 'note-a',
+      label: 'Older',
+      createdAt: DateTime.utc(2026, 1, 1),
+      sync: _sync(),
+    ));
+    await bookmarkRepository.save(Bookmark(
+      uuid: 'bookmark-b',
+      noteUuid: 'note-b',
+      label: null,
+      createdAt: DateTime.utc(2026, 1, 3),
+      sync: _sync(),
+    ));
+    await bookmarkRepository.save(Bookmark(
+      uuid: 'bookmark-a-new',
+      noteUuid: 'note-a',
+      label: 'Newer',
+      createdAt: DateTime.utc(2026, 1, 2),
+      sync: _sync(),
+    ));
+    await bookmarkRepository.save(Bookmark(
+      uuid: 'bookmark-missing',
+      noteUuid: 'deleted-note',
+      label: null,
+      createdAt: DateTime.utc(2026, 1, 4),
+      sync: _sync(),
+    ));
+
+    final notes = await service.getBookmarkedNotes();
+
+    expect(notes.map((note) => note.uuid).toList(), ['note-b', 'note-a']);
+    expect(await service.getBookmarkedNotes(limit: 0), isEmpty);
   });
 
   test('bookmarkNote creates distinct bookmarks and preserves labels',

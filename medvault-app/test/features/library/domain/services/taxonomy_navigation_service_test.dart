@@ -16,6 +16,8 @@ class _FakeTaxonomyRepository implements TaxonomyRepository {
   @override
   Future<List<TaxonomyNode>> getChildren(String parentUuid) async =>
       _store.values.where((n) => n.parentUuid == parentUuid).toList();
+  @override
+  Future<List<TaxonomyNode>> getAll() async => _store.values.toList();
 }
 
 SyncMetadata _sync() => SyncMetadata(

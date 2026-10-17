@@ -142,9 +142,12 @@ class _ChildTopicsSection extends StatelessWidget {
                   ],
                 ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => TaxonomyBrowserRoute(
-                  nodeUuid: child.uuid,
-                ).go(context),
+                onTap: () {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  TaxonomyBrowserRoute(
+                    nodeUuid: child.uuid,
+                  ).push(context);
+                },
               ),
             ),
           ),
@@ -230,7 +233,10 @@ class _NoteModeCard extends StatelessWidget {
         title: Text(modeDetails.title),
         subtitle: Text(note.title),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => NoteReaderRoute(noteUuid: note.uuid).go(context),
+        onTap: () {
+          FocusManager.instance.primaryFocus?.unfocus();
+          NoteReaderRoute(noteUuid: note.uuid).push(context);
+        },
       ),
     );
   }

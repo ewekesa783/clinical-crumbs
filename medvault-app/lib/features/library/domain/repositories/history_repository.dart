@@ -20,4 +20,9 @@ abstract class HistoryRepository {
   /// per note, so "most recent" was a misleading name for what is simply
   /// a lookup by note.
   Future<History?> getByNoteUuid(String noteUuid);
+
+  /// Returns the most recently viewed history entries first.
+  ///
+  /// [limit] caps the number of entries returned.
+  Future<List<History>> getRecent({int? limit = 10});
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../lib/core/sync/sync_metadata.dart';
 import '../../../../lib/features/library/domain/entities/citation.dart';
@@ -12,6 +13,9 @@ import '../../../../lib/features/library/domain/services/dto/note_with_citations
 import '../../../../lib/features/library/presentation/providers/note_bookmark_provider.dart';
 import '../../../../lib/features/library/presentation/providers/note_reader_provider.dart';
 import '../../../../lib/features/library/presentation/screens/note_reader_screen.dart';
+import '../../../../lib/features/settings/data/reading_preferences.dart';
+
+late SharedPreferences testPreferences;
 
 Note makeNote({
   required String uuid,
@@ -66,6 +70,12 @@ Widget buildTestApp({
 }) {
   return ProviderScope(
     overrides: [
+      readingPreferencesProvider.overrideWith(
+        (ref) => ReadingPreferencesController(
+          preferences: testPreferences,
+          initialSize: AppReadingTextSize.normal,
+        ),
+      ),
       noteReaderProvider(noteUuid).overrideWith(
         (ref) async => value.requireValue,
       ),
@@ -85,18 +95,29 @@ class TestNoteBookmark extends NoteBookmark {
   Future<bool> build(String noteUuid) async => false;
 
   @override
-  Future<void> bookmark() async {
+  Future<void> toggle() async {
     state = const AsyncData(true);
   }
 }
 
 void main() {
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    testPreferences = await SharedPreferences.getInstance();
+  });
+
   testWidgets('displays loading state', (tester) async {
     final completer = Completer<NoteWithCitations?>();
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          readingPreferencesProvider.overrideWith(
+            (ref) => ReadingPreferencesController(
+              preferences: testPreferences,
+              initialSize: AppReadingTextSize.normal,
+            ),
+          ),
           noteReaderProvider('note-1').overrideWith(
             (ref) => completer.future,
           ),
@@ -118,6 +139,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          readingPreferencesProvider.overrideWith(
+            (ref) => ReadingPreferencesController(
+              preferences: testPreferences,
+              initialSize: AppReadingTextSize.normal,
+            ),
+          ),
           noteReaderProvider('note-1').overrideWith(
             (ref) async => throw Exception('database internal details'),
           ),
@@ -147,6 +174,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          readingPreferencesProvider.overrideWith(
+            (ref) => ReadingPreferencesController(
+              preferences: testPreferences,
+              initialSize: AppReadingTextSize.normal,
+            ),
+          ),
           noteReaderProvider(note.uuid).overrideWith(
             (ref) async => data,
           ),
@@ -189,7 +222,7 @@ void main() {
     await tester.pump();
 
     expect(find.byIcon(Icons.bookmark), findsOneWidget);
-    expect(find.byTooltip('Bookmarked'), findsOneWidget);
+    expect(find.byTooltip('Remove bookmark'), findsOneWidget);
   });
 
   testWidgets('displays not-found state', (tester) async {

@@ -2,6 +2,7 @@ import '../../../../core/sync/sync_metadata.dart';
 import '../entities/bookmark.dart';
 import '../entities/history.dart';
 import '../entities/note.dart';
+import '../entities/taxonomy_node.dart';
 import '../repositories/bookmark_repository.dart';
 import '../repositories/citation_repository.dart';
 import '../repositories/history_repository.dart';
@@ -73,6 +74,83 @@ class LibraryService {
   SyncMetadata _syncFor(SyncMetadata? existingSync) =>
       existingSync ?? _createSyncMetadata();
 
+  /// Updates a note's title, tags, and topic without changing its content.
+  ///
+  /// The note UUID, mode, body, citations, pin state, and creation timestamp
+  /// are preserved. Local edits retain sync identity and mark the record dirty.
+  Future<Note> updateNoteMetadata({
+    required String noteUuid,
+    required String title,
+    required List<String> tags,
+    required String topicUuid,
+  }) async {
+    final existing = await _noteRepository.getByUuid(noteUuid);
+    if (existing == null) {
+      throw StateError('No note found for uuid "$noteUuid".');
+    }
+    if (existing.sync.isDeleted) {
+      throw StateError('A deleted note cannot be edited.');
+    }
+
+    final normalizedTitle = title.trim();
+    if (normalizedTitle.isEmpty) {
+      throw ArgumentError.value(title, 'title', 'Title cannot be empty.');
+    }
+
+    final destination = await _taxonomyRepository.getByUuid(topicUuid);
+    if (destination == null || destination.nodeType != NodeType.topic) {
+      throw StateError('The destination topic does not exist or is invalid.');
+    }
+
+    if (topicUuid != existing.topicUuid) {
+      final conflict = await _noteRepository.getByTopicAndMode(
+        topicUuid,
+        existing.mode,
+      );
+      if (conflict != null && conflict.uuid != existing.uuid) {
+        throw StateError(
+          'The destination topic already has a note in this mode.',
+        );
+      }
+    }
+
+    final normalizedTags = <String>[];
+    final seenTags = <String>{};
+    for (final tag in tags) {
+      final normalized = tag.trim();
+      if (normalized.isNotEmpty && seenTags.add(normalized.toLowerCase())) {
+        normalizedTags.add(normalized);
+      }
+    }
+
+    final updatedAt = _now();
+    final updated = Note(
+      uuid: existing.uuid,
+      topicUuid: topicUuid,
+      mode: existing.mode,
+      title: normalizedTitle,
+      bodyMarkdown: existing.bodyMarkdown,
+      plainTextExtract: existing.plainTextExtract,
+      tags: normalizedTags,
+      citationOrder: existing.citationOrder,
+      isPinned: existing.isPinned,
+      createdAt: existing.createdAt,
+      updatedAt: updatedAt,
+      sync: SyncMetadata(
+        remoteId: existing.sync.remoteId,
+        lastModifiedLocal: updatedAt,
+        lastSyncedAt: existing.sync.lastSyncedAt,
+        isDirty: true,
+        isDeleted: false,
+        deviceId: existing.sync.deviceId,
+        syncRevision: existing.sync.syncRevision + 1,
+      ),
+    );
+
+    await _noteRepository.save(updated);
+    return updated;
+  }
+
   /// Returns all notes for [topicUuid], grouped into a [TopicNotes] DTO.
   ///
   /// Genuine service-layer work: requires knowing the topic exists
@@ -135,10 +213,53 @@ class LibraryService {
     await _historyRepository.save(entry);
   }
 
+  /// Resolves the most recently viewed history entries to existing notes.
+  ///
+  /// History records whose notes no longer exist are skipped.
+  Future<List<Note>> getRecentlyViewedNotes({int? limit = 10}) async {
+    if (limit != null && limit <= 0) return [];
+
+    final history = await _historyRepository.getRecent(limit: limit);
+    final notes = <Note>[];
+
+    for (final entry in history) {
+      final note = await _noteRepository.getByUuid(entry.noteUuid);
+      if (note != null) notes.add(note);
+    }
+
+    return notes;
+  }
+
+  /// Resolves recent bookmarks to unique, existing notes.
+  ///
+  /// Multiple bookmarks for one note produce a single dashboard entry.
+  /// Bookmarks whose notes no longer exist are skipped.
+  Future<List<Note>> getBookmarkedNotes({int limit = 10}) async {
+    if (limit <= 0) return [];
+
+    final bookmarks = await _bookmarkRepository.getRecent(limit: limit);
+    final notes = <Note>[];
+    final seenNoteUuids = <String>{};
+
+    for (final bookmark in bookmarks) {
+      if (!seenNoteUuids.add(bookmark.noteUuid)) continue;
+
+      final note = await _noteRepository.getByUuid(bookmark.noteUuid);
+      if (note != null) notes.add(note);
+    }
+
+    return notes;
+  }
+
   /// Returns whether [noteUuid] has at least one bookmark.
   Future<bool> isNoteBookmarked(String noteUuid) async {
     final bookmarks = await _bookmarkRepository.getByNoteUuid(noteUuid);
     return bookmarks.isNotEmpty;
+  }
+
+  /// Removes all bookmarks associated with [noteUuid].
+  Future<void> unbookmarkNote(String noteUuid) async {
+    await _bookmarkRepository.deleteByNoteUuid(noteUuid);
   }
 
   /// Creates a new bookmark for [noteUuid] (a note may have more than

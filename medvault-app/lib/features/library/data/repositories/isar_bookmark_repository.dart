@@ -28,6 +28,16 @@ class IsarBookmarkRepository implements BookmarkRepository {
   }
 
   @override
+  Future<void> deleteByNoteUuid(String noteUuid) async {
+    await _isar.writeTxn(() async {
+      await _isar.bookmarkModels
+          .where()
+          .noteUuidEqualTo(noteUuid)
+          .deleteAll();
+    });
+  }
+
+  @override
   Future<Bookmark?> getByUuid(String uuid) async {
     final model =
         await _isar.bookmarkModels.where().uuidEqualTo(uuid).findFirst();
@@ -42,5 +52,18 @@ class IsarBookmarkRepository implements BookmarkRepository {
         .noteUuidEqualTo(noteUuid)
         .findAll();
     return models.map(BookmarkMapper.toDomain).toList();
+  }
+
+  @override
+  Future<List<Bookmark>> getRecent({int limit = 10}) async {
+    if (limit <= 0) return [];
+
+    final models = await _isar.bookmarkModels.where().findAll()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    return models
+        .take(limit)
+        .map(BookmarkMapper.toDomain)
+        .toList();
   }
 }

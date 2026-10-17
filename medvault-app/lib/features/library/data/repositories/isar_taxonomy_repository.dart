@@ -30,8 +30,7 @@ class IsarTaxonomyRepository implements TaxonomyRepository {
         .slugEqualTo(model.slug)
         .findFirst();
 
-    if (siblingWithSameSlug != null &&
-        siblingWithSameSlug.uuid != model.uuid) {
+    if (siblingWithSameSlug != null && siblingWithSameSlug.uuid != model.uuid) {
       throw StateError(
         'A sibling taxonomy node with slug "${model.slug}" already exists '
         'under parent "${model.parentUuid}".',
@@ -65,6 +64,12 @@ class IsarTaxonomyRepository implements TaxonomyRepository {
         .filter()
         .parentUuidEqualTo(parentUuid)
         .findAll();
+    return models.map(TaxonomyNodeMapper.toDomain).toList();
+  }
+
+  @override
+  Future<List<TaxonomyNode>> getAll() async {
+    final models = await _isar.taxonomyNodeModels.where().findAll();
     return models.map(TaxonomyNodeMapper.toDomain).toList();
   }
 }

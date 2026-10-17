@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/di/injector.dart';
+import '../../../home/presentation/providers/home_dashboard_provider.dart';
 
 part 'note_bookmark_provider.g.dart';
 
@@ -13,11 +14,25 @@ class NoteBookmark extends _$NoteBookmark {
     return libraryService.isNoteBookmarked(noteUuid);
   }
 
-  Future<void> bookmark() async {
-    final libraryService = await ref.watch(libraryServiceProvider.future);
+  Future<void> toggle() async {
+    final libraryService = await ref.read(libraryServiceProvider.future);
+    final currentlyBookmarked = state.valueOrNull ??
+        await libraryService.isNoteBookmarked(noteUuid);
 
-    await libraryService.bookmarkNote(noteUuid);
+    state = const AsyncLoading();
 
-    state = const AsyncData(true);
+    try {
+      if (currentlyBookmarked) {
+        await libraryService.unbookmarkNote(noteUuid);
+      } else {
+        await libraryService.bookmarkNote(noteUuid);
+      }
+
+      state = AsyncData(!currentlyBookmarked);
+      ref.invalidate(homeDashboardProvider);
+    } catch (_) {
+      state = AsyncData(currentlyBookmarked);
+      rethrow;
+    }
   }
 }

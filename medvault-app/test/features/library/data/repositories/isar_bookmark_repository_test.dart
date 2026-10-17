@@ -81,4 +81,69 @@ void main() {
     );
     expect(bookmarks, hasLength(1));
   });
+
+  test('getRecent returns bookmarks newest first', () async {
+    await repository.save(Bookmark(
+      uuid: 'bookmark-old',
+      noteUuid: 'note-old',
+      label: 'Old',
+      createdAt: DateTime.utc(2026, 1, 1),
+      sync: _sync(),
+    ));
+    await repository.save(Bookmark(
+      uuid: 'bookmark-new',
+      noteUuid: 'note-new',
+      label: 'New',
+      createdAt: DateTime.utc(2026, 1, 3),
+      sync: _sync(),
+    ));
+    await repository.save(Bookmark(
+      uuid: 'bookmark-middle',
+      noteUuid: 'note-middle',
+      label: 'Middle',
+      createdAt: DateTime.utc(2026, 1, 2),
+      sync: _sync(),
+    ));
+
+    final bookmarks = await repository.getRecent();
+
+    expect(
+      bookmarks.map((bookmark) => bookmark.uuid).toList(),
+      ['bookmark-new', 'bookmark-middle', 'bookmark-old'],
+    );
+  });
+
+  test('getRecent respects the requested limit', () async {
+    for (var i = 1; i <= 3; i++) {
+      await repository.save(Bookmark(
+        uuid: 'bookmark-$i',
+        noteUuid: 'note-$i',
+        label: 'Bookmark $i',
+        createdAt: DateTime.utc(2026, 1, i),
+        sync: _sync(),
+      ));
+    }
+
+    final bookmarks = await repository.getRecent(limit: 2);
+
+    expect(bookmarks, hasLength(2));
+    expect(
+      bookmarks.map((bookmark) => bookmark.uuid).toList(),
+      ['bookmark-3', 'bookmark-2'],
+    );
+  });
+
+  test('getRecent returns an empty list for non-positive limits', () async {
+    await repository.save(Bookmark(
+      uuid: 'bookmark-1',
+      noteUuid: 'note-1',
+      label: 'Bookmark',
+      createdAt: DateTime.utc(2026, 1, 1),
+      sync: _sync(),
+    ));
+
+    expect(await repository.getRecent(limit: 0), isEmpty);
+    expect(await repository.getRecent(limit: -1), isEmpty);
+  });
+
 }

@@ -31,6 +31,8 @@ class _FakeLibraryService extends LibraryService {
   final bool initiallyBookmarked;
   Object? bookmarkError;
   int bookmarkCalls = 0;
+  int unbookmarkCalls = 0;
+  Object? unbookmarkError;
   String? bookmarkedNoteUuid;
 
   @override
@@ -49,6 +51,12 @@ class _FakeLibraryService extends LibraryService {
       sync: _sync(),
     );
   }
+
+  @override
+  Future<void> unbookmarkNote(String noteUuid) async {
+    unbookmarkCalls++;
+    if (unbookmarkError != null) throw unbookmarkError!;
+  }
 }
 
 class _FakeTaxonomyRepository implements TaxonomyRepository {
@@ -58,6 +66,8 @@ class _FakeTaxonomyRepository implements TaxonomyRepository {
   Future<TaxonomyNode?> getByUuid(String uuid) async => null;
   @override
   Future<List<TaxonomyNode>> getChildren(String parentUuid) async => [];
+  @override
+  Future<List<TaxonomyNode>> getAll() async => [];
 }
 
 class _FakeNoteRepository implements NoteRepository {
@@ -68,6 +78,9 @@ class _FakeNoteRepository implements NoteRepository {
   @override
   Future<Note?> getByTopicAndMode(String topicUuid, Mode mode) async => null;
   @override
+  @override
+  Future<List<Note>> getAll() async => [];
+
   Future<List<Note>> search(String query) async => [];
 }
 
@@ -85,8 +98,14 @@ class _FakeBookmarkRepository implements BookmarkRepository {
   Future<void> save(Bookmark bookmark) async {}
   @override
   Future<Bookmark?> getByUuid(String uuid) async => null;
+
+  @override
+  Future<void> deleteByNoteUuid(String noteUuid) async {}
   @override
   Future<List<Bookmark>> getByNoteUuid(String noteUuid) async => [];
+
+  @override
+  Future<List<Bookmark>> getRecent({int limit = 10}) async => [];
 }
 
 class _FakeHistoryRepository implements HistoryRepository {
@@ -96,6 +115,9 @@ class _FakeHistoryRepository implements HistoryRepository {
   Future<History?> getByUuid(String uuid) async => null;
   @override
   Future<History?> getByNoteUuid(String noteUuid) async => null;
+
+  @override
+  Future<List<History>> getRecent({int? limit = 10}) async => [];
 }
 
 SyncMetadata _sync() => SyncMetadata(
@@ -124,7 +146,7 @@ void main() {
     expect(result, isTrue);
   });
 
-  test('sets bookmark state after bookmarking succeeds', () async {
+  test('toggles an unbookmarked note on successfully', () async {
     final service = _FakeLibraryService(initiallyBookmarked: false);
     final container = _containerWith(service);
     addTearDown(container.dispose);
@@ -132,14 +154,14 @@ void main() {
 
     expect(await container.read(provider.future), isFalse);
 
-    await container.read(provider.notifier).bookmark();
+    await container.read(provider.notifier).toggle();
 
     expect(service.bookmarkCalls, 1);
     expect(service.bookmarkedNoteUuid, 'note-1');
     expect(container.read(provider), const AsyncData<bool>(true));
   });
 
-  test('does not mark the note bookmarked when saving fails', () async {
+  test('preserves the unbookmarked state when saving fails', () async {
     final error = StateError('Bookmark save failed');
     final service = _FakeLibraryService(initiallyBookmarked: false)
       ..bookmarkError = error;
@@ -150,7 +172,7 @@ void main() {
     expect(await container.read(provider.future), isFalse);
 
     await expectLater(
-      container.read(provider.notifier).bookmark(),
+      container.read(provider.notifier).toggle(),
       throwsA(same(error)),
     );
 

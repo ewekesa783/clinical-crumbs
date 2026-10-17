@@ -4,9 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../debug/component_gallery_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/home/presentation/screens/recent_history_screen.dart';
 import '../../features/library/presentation/screens/library_screen.dart';
 import '../../features/library/presentation/screens/note_reader_screen.dart';
+import '../../features/library/presentation/screens/note_edit_screen.dart';
 import '../../features/library/presentation/screens/taxonomy_browser_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../shell/medvault_shell.dart';
 
 part 'app_router.g.dart';
@@ -45,6 +48,16 @@ class NoteReaderRoute extends GoRouteData {
   }
 }
 
+@TypedGoRoute<SettingsRoute>(path: '/settings')
+class SettingsRoute extends GoRouteData {
+  const SettingsRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) {
+    return const SettingsScreen();
+  }
+}
+
 @TypedGoRoute<HomeRoute>(path: '/')
 class HomeRoute extends GoRouteData {
   const HomeRoute();
@@ -77,19 +90,85 @@ class ComponentGalleryRoute extends GoRouteData {
 
 final GoRouter appRouter = GoRouter(
   routes: [
-    ShellRoute(
-      builder: (context, state, child) {
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) {
         return MedVaultShell(
-          onHomeSelected: () => const HomeRoute().go(context),
-          onLibrarySelected: () => const LibraryRoute().go(context),
-          child: child,
+          onHomeSelected: () {
+            if (navigationShell.currentIndex != 0) {
+              FocusManager.instance.primaryFocus?.unfocus();
+            }
+            navigationShell.goBranch(0, initialLocation: false);
+          },
+          onLibrarySelected: () {
+            if (navigationShell.currentIndex != 1) {
+              FocusManager.instance.primaryFocus?.unfocus();
+            }
+            navigationShell.goBranch(1, initialLocation: false);
+          },
+          onSettingsSelected: () {
+            if (navigationShell.currentIndex != 2) {
+              FocusManager.instance.primaryFocus?.unfocus();
+            }
+            navigationShell.goBranch(2, initialLocation: false);
+          },
+          child: navigationShell,
         );
       },
-      routes: [
-        $homeRoute,
-        $libraryRoute,
-        $taxonomyBrowserRoute,
-        $noteReaderRoute,
+      branches: [
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/',
+              builder: (context, state) => const HomeScreen(),
+              routes: [
+                GoRoute(
+                  path: 'history',
+                  builder: (context, state) => const RecentHistoryScreen(),
+                ),
+              ],
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/library',
+              builder: (context, state) => LibraryScreen(
+                focusSearchRequest: state.uri.queryParameters['focusSearch'],
+              ),
+              routes: [
+                GoRoute(
+                  path: 'node/:nodeUuid',
+                  builder: (context, state) => TaxonomyBrowserScreen(
+                    nodeUuid: state.pathParameters['nodeUuid']!,
+                  ),
+                ),
+                GoRoute(
+                  path: 'note/:noteUuid',
+                  builder: (context, state) => NoteReaderScreen(
+                    noteUuid: state.pathParameters['noteUuid']!,
+                  ),
+                  routes: [
+                    GoRoute(
+                      path: 'edit',
+                      builder: (context, state) => NoteEditScreen(
+                        noteUuid: state.pathParameters['noteUuid']!,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/settings',
+              builder: (context, state) => const SettingsScreen(),
+            ),
+          ],
+        ),
       ],
     ),
     $componentGalleryRoute,

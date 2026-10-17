@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/spacing_tokens.dart';
@@ -8,6 +9,7 @@ import '../../domain/entities/citation.dart';
 import '../../domain/services/dto/note_with_citations.dart';
 import '../providers/note_bookmark_provider.dart';
 import '../providers/note_reader_provider.dart';
+import '../../../settings/data/reading_preferences.dart';
 
 /// Displays a single note and its resolved citations.
 class NoteReaderScreen extends ConsumerWidget {
@@ -30,8 +32,16 @@ class NoteReaderScreen extends ConsumerWidget {
           orElse: () => const Text('Note'),
         ),
         actions: [
-          if (noteAsync.hasValue && noteAsync.value != null)
+          if (noteAsync.hasValue && noteAsync.value != null) ...[
+            IconButton(
+              tooltip: 'Edit note details',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () => context.push(
+                '/library/note/$noteUuid/edit',
+              ),
+            ),
             _BookmarkButton(noteUuid: noteUuid),
+          ],
         ],
       ),
       body: noteAsync.when(
@@ -92,16 +102,12 @@ class _BookmarkButton extends ConsumerWidget {
 
     return IconButton(
       tooltip: bookmarkAsync.maybeWhen(
-        data: (bookmarked) => bookmarked ? 'Bookmarked' : 'Bookmark note',
+        data: (bookmarked) => bookmarked ? 'Remove bookmark' : 'Bookmark note',
         orElse: () => 'Bookmark note',
       ),
       onPressed: bookmarkAsync.maybeWhen(
-        data: (bookmarked) {
-          if (bookmarked) return null;
-
-          return () {
-            ref.read(noteBookmarkProvider(noteUuid).notifier).bookmark();
-          };
+        data: (_) => () {
+          ref.read(noteBookmarkProvider(noteUuid).notifier).toggle();
         },
         orElse: () => null,
       ),
@@ -120,7 +126,7 @@ class _BookmarkButton extends ConsumerWidget {
   }
 }
 
-class _NoteReaderContent extends StatefulWidget {
+class _NoteReaderContent extends ConsumerStatefulWidget {
   const _NoteReaderContent({
     required this.data,
   });
@@ -128,10 +134,10 @@ class _NoteReaderContent extends StatefulWidget {
   final NoteWithCitations data;
 
   @override
-  State<_NoteReaderContent> createState() => _NoteReaderContentState();
+  ConsumerState<_NoteReaderContent> createState() => _NoteReaderContentState();
 }
 
-class _NoteReaderContentState extends State<_NoteReaderContent> {
+class _NoteReaderContentState extends ConsumerState<_NoteReaderContent> {
   final Map<int, GlobalKey> _sectionKeys = {};
   String? _lastMarkdown;
 
@@ -209,102 +215,113 @@ class _NoteReaderContentState extends State<_NoteReaderContent> {
         .where((entry) => entry.value.heading != null)
         .toList();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            data.note.title,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          if (headings.isNotEmpty) ...[
-            ExpansionTile(
-              key: const ValueKey('note-outline'),
-              tilePadding: EdgeInsets.zero,
-              title: const Text('On this page'),
-              children: headings.map((entry) {
-                final section = entry.value;
-                return ListTile(
-                  contentPadding: EdgeInsets.only(
-                    left: AppSpacing.md * section.level,
-                    right: AppSpacing.sm,
-                  ),
-                  dense: true,
-                  title: Text(section.heading!),
-                  onTap: () {
-                    final target = _sectionKeys[entry.key]?.currentContext;
-                    if (target != null) {
-                      Scrollable.ensureVisible(
-                        target,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        alignment: 0.08,
-                      );
-                    }
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: AppSpacing.md),
-          ],
-          ...sections.asMap().entries.map((entry) {
-            final section = entry.value;
-            return Container(
-              key: _sectionKeys[entry.key],
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (section.heading != null)
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        top: AppSpacing.md,
-                        bottom: AppSpacing.sm,
-                      ),
-                      child: Text(
-                        section.heading!,
-                        style: _headingStyle(context, section.level),
-                      ),
-                    ),
-                  if (section.markdown.isNotEmpty)
-                    MarkdownBody(
-                      data: section.markdown,
-                      selectable: true,
-                      onTapLink: (text, href, title) async {
-                        if (href == null) return;
-                        final uri = Uri.tryParse(href);
-                        if (uri == null ||
-                            (uri.scheme != 'http' && uri.scheme != 'https') ||
-                            uri.host.isEmpty) {
-                          return;
-                        }
-                        try {
-                          await launchUrl(
-                            uri,
-                            mode: LaunchMode.externalApplication,
-                          );
-                        } catch (_) {
-                          // Keep the reader usable if the external app cannot open.
-                        }
-                      },
-                    ),
-                ],
-              ),
-            );
-          }),
-          if (data.citations.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xxl),
-            const Divider(),
-            const SizedBox(height: AppSpacing.lg),
+    final readingSize = ref.watch(readingPreferencesProvider);
+    final baseTheme = Theme.of(context);
+    final readingTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(
+        fontSizeFactor: readingSize.scale,
+      ),
+    );
+
+    return Theme(
+      data: readingTheme,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              'References',
-              style: Theme.of(context).textTheme.titleMedium,
+              data.note.title,
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
-            const SizedBox(height: AppSpacing.sm),
-            _CitationsList(citations: data.citations),
+            const SizedBox(height: AppSpacing.lg),
+            if (headings.isNotEmpty) ...[
+              ExpansionTile(
+                key: const ValueKey('note-outline'),
+                tilePadding: EdgeInsets.zero,
+                title: const Text('On this page'),
+                children: headings.map((entry) {
+                  final section = entry.value;
+                  return ListTile(
+                    contentPadding: EdgeInsets.only(
+                      left: AppSpacing.md * section.level,
+                      right: AppSpacing.sm,
+                    ),
+                    dense: true,
+                    title: Text(section.heading!),
+                    onTap: () {
+                      final target = _sectionKeys[entry.key]?.currentContext;
+                      if (target != null) {
+                        Scrollable.ensureVisible(
+                          target,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          alignment: 0.08,
+                        );
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            ...sections.asMap().entries.map((entry) {
+              final section = entry.value;
+              return Container(
+                key: _sectionKeys[entry.key],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (section.heading != null)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: AppSpacing.md,
+                          bottom: AppSpacing.sm,
+                        ),
+                        child: Text(
+                          section.heading!,
+                          style: _headingStyle(context, section.level),
+                        ),
+                      ),
+                    if (section.markdown.isNotEmpty)
+                      MarkdownBody(
+                        data: section.markdown,
+                        selectable: true,
+                        onTapLink: (text, href, title) async {
+                          if (href == null) return;
+                          final uri = Uri.tryParse(href);
+                          if (uri == null ||
+                              (uri.scheme != 'http' && uri.scheme != 'https') ||
+                              uri.host.isEmpty) {
+                            return;
+                          }
+                          try {
+                            await launchUrl(
+                              uri,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          } catch (_) {
+                            // Keep the reader usable if the external app cannot open.
+                          }
+                        },
+                      ),
+                  ],
+                ),
+              );
+            }),
+            if (data.citations.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xxl),
+              const Divider(),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'References',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _CitationsList(citations: data.citations),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

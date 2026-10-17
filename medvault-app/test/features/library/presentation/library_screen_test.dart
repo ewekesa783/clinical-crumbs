@@ -66,6 +66,178 @@ void main() {
     );
   }
 
+  testWidgets('filters notes by mode and clears filters', (tester) async {
+    final now = DateTime(2026, 1, 1);
+    Note makeNote(String uuid, String title, Mode mode) => Note(
+          uuid: uuid,
+          topicUuid: 'root-1',
+          mode: mode,
+          title: title,
+          bodyMarkdown: 'Synthetic test content.',
+          plainTextExtract: 'Synthetic test content.',
+          tags: const [],
+          citationOrder: const [],
+          isPinned: false,
+          createdAt: now,
+          updatedAt: now,
+          sync: SyncMetadata(
+            lastModifiedLocal: now,
+            isDirty: false,
+            isDeleted: false,
+            deviceId: 'test-device',
+            syncRevision: 1,
+          ),
+        );
+
+    final detailed = makeNote(
+      'detailed-test',
+      'Detailed Fixture',
+      Mode.detailedNotes,
+    );
+    final quick = makeNote(
+      'quick-test',
+      'Quick Fixture',
+      Mode.quickReview,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          libraryRootsProvider.overrideWith((ref) async => nodes),
+          libraryTaxonomyNodesProvider.overrideWith((ref) async => nodes),
+          allLibraryNotesProvider
+              .overrideWith((ref) async => [detailed, quick]),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(useMaterial3: true),
+          home: const LibraryScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Detailed Fixture'), findsNothing);
+    expect(find.text('Quick Fixture'), findsNothing);
+
+    await tester.tap(find.byTooltip('Open filters'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<Mode?>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Quick review').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apply filters'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quick Fixture'), findsOneWidget);
+    expect(find.text('Detailed Fixture'), findsNothing);
+    expect(find.text('1 note found'), findsOneWidget);
+    expect(find.byTooltip('Open filters (1 active)'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Open filters (1 active)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Clear filters'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apply filters'));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Open filters (1 active)'), findsNothing);
+    expect(find.text('Quick Fixture'), findsNothing);
+    expect(find.text('Detailed Fixture'), findsNothing);
+    expect(find.text('Medicine'), findsOneWidget);
+  });
+
+  testWidgets('subject filter includes descendant-topic notes', (tester) async {
+    final now = DateTime(2026, 1, 1);
+    final medicine = nodes.first;
+    final cardiology = TaxonomyNode(
+      uuid: 'cardiology-topic',
+      path: 'root-1/cardiology-topic',
+      depth: 1,
+      nodeType: NodeType.topic,
+      title: 'Cardiology',
+      slug: 'cardiology',
+      sortOrder: 0,
+      noteCount: 1,
+      isUserCreated: false,
+      createdAt: now,
+      updatedAt: now,
+      sync: SyncMetadata(
+        lastModifiedLocal: now,
+        isDirty: false,
+        isDeleted: false,
+        deviceId: 'test-device',
+        syncRevision: 1,
+      ),
+    );
+
+    Note makeNote(String uuid, String title, String topicUuid) => Note(
+          uuid: uuid,
+          topicUuid: topicUuid,
+          mode: Mode.detailedNotes,
+          title: title,
+          bodyMarkdown: 'Synthetic test content.',
+          plainTextExtract: 'Synthetic test content.',
+          tags: const [],
+          citationOrder: const [],
+          isPinned: false,
+          createdAt: now,
+          updatedAt: now,
+          sync: SyncMetadata(
+            lastModifiedLocal: now,
+            isDirty: false,
+            isDeleted: false,
+            deviceId: 'test-device',
+            syncRevision: 1,
+          ),
+        );
+
+    final childNote = makeNote(
+      'cardiology-note',
+      'Cardiology Fixture',
+      cardiology.uuid,
+    );
+    final otherSubjectNote = makeNote(
+      'surgery-note',
+      'Surgery Fixture',
+      'root-2',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          libraryRootsProvider.overrideWith((ref) async => nodes),
+          libraryTaxonomyNodesProvider.overrideWith(
+            (ref) async => [medicine, cardiology, nodes.last],
+          ),
+          allLibraryNotesProvider.overrideWith(
+            (ref) async => [childNote, otherSubjectNote],
+          ),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(useMaterial3: true),
+          home: const LibraryScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Open filters'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byType(DropdownButtonFormField<String?>).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Medicine').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apply filters'));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Open filters (1 active)'), findsOneWidget);
+    expect(find.text('Cardiology Fixture'), findsOneWidget);
+    expect(find.text('Surgery Fixture'), findsNothing);
+    expect(find.text('1 note found'), findsOneWidget);
+  });
+
   testWidgets('displays root taxonomy nodes', (tester) async {
     await tester.pumpWidget(buildTestApp(nodes));
     await tester.pumpAndSettle();
@@ -280,6 +452,10 @@ void main() {
   });
 
   testWidgets('ranks search results by relevance', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final titleMatch = Note(
       uuid: 'asthma-title',
       topicUuid: 'respiratory-topic',

@@ -12,6 +12,9 @@ class _FakeNoteRepository implements NoteRepository {
   Object? searchError;
 
   @override
+  @override
+  Future<List<Note>> getAll() async => [];
+
   Future<List<Note>> search(String query) async {
     receivedQuery = query;
     if (searchError != null) throw searchError!;

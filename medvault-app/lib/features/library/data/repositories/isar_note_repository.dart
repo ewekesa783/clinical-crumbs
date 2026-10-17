@@ -49,6 +49,12 @@ class IsarNoteRepository implements NoteRepository {
   }
 
   @override
+  Future<List<Note>> getAll() async {
+    final models = await _isar.noteModels.where().findAll();
+    return models.map(NoteMapper.toDomain).toList();
+  }
+
+  @override
   Future<List<Note>> search(String query) async {
     final term = query.trim();
     if (term.isEmpty) return [];

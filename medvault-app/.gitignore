@@ -13,3 +13,6 @@ build/
 .idea/
 .metadata
 *.iml
+
+# Android release signing
+android/key.properties

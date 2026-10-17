@@ -10,4 +10,7 @@ abstract class TaxonomyRepository {
   Future<TaxonomyNode?> getByUuid(String uuid);
 
   Future<List<TaxonomyNode>> getChildren(String parentUuid);
+
+  /// Returns all taxonomy nodes for library-wide filtering.
+  Future<List<TaxonomyNode>> getAll();
 }

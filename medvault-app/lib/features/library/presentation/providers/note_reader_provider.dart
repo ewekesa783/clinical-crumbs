@@ -1,5 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../home/presentation/providers/home_dashboard_provider.dart';
+import '../../../home/presentation/providers/recent_history_provider.dart';
+
 import '../../../../core/di/injector.dart';
 import '../../domain/services/dto/note_with_citations.dart';
 
@@ -18,6 +21,8 @@ Future<NoteWithCitations?> noteReader(
 
   if (noteWithCitations != null) {
     await libraryService.recordNoteViewed(noteUuid);
+    ref.invalidate(homeDashboardProvider);
+    ref.invalidate(recentHistoryProvider);
   }
 
   return noteWithCitations;

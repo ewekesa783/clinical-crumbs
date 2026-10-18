@@ -400,6 +400,79 @@ Management details.
 
     expect(tester.takeException(), isNull);
   });
+  testWidgets(
+    'excludes headings inside fenced code blocks from the outline',
+    (tester) async {
+      final note = makeNote(
+        uuid: 'note-fenced-headings',
+        bodyMarkdown: '''
+# Overview
+
+Introductory text.
+
+## Real Section
+
+Real section content.
+
+```markdown
+# Fake Backtick Heading
+
+## Another Fake Heading
+```
+
+~~~markdown
+### Fake Tilde Heading
+~~~
+
+## Another Real Section
+
+More real content.
+''',
+      );
+
+      final data = NoteWithCitations(
+        note: note,
+        citations: const [],
+      );
+
+      await tester.pumpWidget(
+        buildTestApp(
+          noteUuid: note.uuid,
+          value: AsyncData<NoteWithCitations?>(data),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('On this page'));
+      await tester.pumpAndSettle();
+
+      final outline = find.byKey(const ValueKey('note-outline'));
+
+      for (final heading in [
+        'Real Section',
+        'Another Real Section',
+      ]) {
+        expect(
+          find.descendant(of: outline, matching: find.text(heading)),
+          findsOneWidget,
+          reason: '$heading should appear in the outline',
+        );
+      }
+
+      for (final heading in [
+        'Fake Backtick Heading',
+        'Another Fake Heading',
+        'Fake Tilde Heading',
+      ]) {
+        expect(
+          find.descendant(of: outline, matching: find.text(heading)),
+          findsNothing,
+          reason: '$heading must be excluded from the outline',
+        );
+      }
+    },
+  );
+
   testWidgets('renders resolved citations', (tester) async {
     final note = makeNote(uuid: 'note-1');
 

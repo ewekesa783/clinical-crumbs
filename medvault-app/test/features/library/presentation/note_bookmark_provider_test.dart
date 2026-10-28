@@ -61,6 +61,8 @@ class _FakeLibraryService extends LibraryService {
 
 class _FakeTaxonomyRepository implements TaxonomyRepository {
   @override
+  Future<void> deleteByUuid(String uuid) async {}
+  @override
   Future<void> save(TaxonomyNode node) async {}
   @override
   Future<TaxonomyNode?> getByUuid(String uuid) async => null;
@@ -73,6 +75,9 @@ class _FakeTaxonomyRepository implements TaxonomyRepository {
 class _FakeNoteRepository implements NoteRepository {
   @override
   Future<void> save(Note note) async {}
+
+  @override
+  Future<void> deleteByUuid(String uuid) async {}
   @override
   Future<Note?> getByUuid(String uuid) async => null;
   @override
@@ -102,6 +107,8 @@ class _FakeBookmarkRepository implements BookmarkRepository {
   @override
   Future<void> deleteByNoteUuid(String noteUuid) async {}
   @override
+  Future<void> deleteAll() async {}
+  @override
   Future<List<Bookmark>> getByNoteUuid(String noteUuid) async => [];
 
   @override
@@ -109,6 +116,10 @@ class _FakeBookmarkRepository implements BookmarkRepository {
 }
 
 class _FakeHistoryRepository implements HistoryRepository {
+  @override
+  Future<void> deleteByNoteUuid(String noteUuid) async {}
+  @override
+  Future<void> deleteAll() async {}
   @override
   Future<void> save(History history) async {}
   @override

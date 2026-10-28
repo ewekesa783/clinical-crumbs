@@ -8,6 +8,9 @@ class _FakeTaxonomyRepository implements TaxonomyRepository {
   final Map<String, TaxonomyNode> _store = {};
 
   @override
+  @override
+  Future<void> deleteByUuid(String uuid) async => _store.remove(uuid);
+
   Future<void> save(TaxonomyNode node) async => _store[node.uuid] = node;
 
   @override

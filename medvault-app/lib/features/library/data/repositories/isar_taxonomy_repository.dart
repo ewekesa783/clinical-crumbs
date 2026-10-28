@@ -51,6 +51,16 @@ class IsarTaxonomyRepository implements TaxonomyRepository {
   }
 
   @override
+  Future<void> deleteByUuid(String uuid) async {
+    await _isar.writeTxn(() async {
+      await _isar.taxonomyNodeModels
+          .where()
+          .uuidEqualTo(uuid)
+          .deleteAll();
+    });
+  }
+
+  @override
   Future<TaxonomyNode?> getByUuid(String uuid) async {
     final model =
         await _isar.taxonomyNodeModels.filter().uuidEqualTo(uuid).findFirst();

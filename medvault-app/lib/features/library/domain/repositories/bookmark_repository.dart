@@ -6,6 +6,9 @@ abstract class BookmarkRepository {
   /// Removes every bookmark associated with [noteUuid].
   Future<void> deleteByNoteUuid(String noteUuid);
 
+  /// Removes every bookmark without deleting the underlying resources.
+  Future<void> deleteAll();
+
   Future<Bookmark?> getByUuid(String uuid);
 
   /// A note may have more than one bookmark; this returns all of them.

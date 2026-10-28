@@ -7,9 +7,11 @@ import '../time/clock.dart';
 import '../sync/sync_metadata_factory.dart';
 import '../storage/isar_device_identity_repository.dart';
 import '../storage/device_identity_repository.dart';
+import '../storage/learning_resource_file_storage.dart';
 import '../../features/library/data/repositories/isar_bookmark_repository.dart';
 import '../../features/library/data/repositories/isar_citation_repository.dart';
 import '../../features/library/data/repositories/isar_history_repository.dart';
+import '../../features/library/data/repositories/isar_learning_resource_repository.dart';
 import '../../features/library/data/repositories/isar_note_repository.dart';
 import '../../features/library/data/repositories/isar_taxonomy_repository.dart';
 import '../../features/library/domain/repositories/taxonomy_repository.dart';
@@ -18,6 +20,7 @@ import '../../features/library/domain/services/library_service.dart';
 import '../../features/library/domain/repositories/bookmark_repository.dart';
 import '../../features/library/domain/repositories/citation_repository.dart';
 import '../../features/library/domain/repositories/history_repository.dart';
+import '../../features/library/domain/repositories/learning_resource_repository.dart';
 import '../../features/library/domain/repositories/note_repository.dart';
 
 part 'injector.g.dart';
@@ -32,6 +35,14 @@ Future<Isar> appDatabase(AppDatabaseRef ref) async {
 @Riverpod(keepAlive: true)
 Clock clock(ClockRef ref) {
   return const SystemClock();
+}
+
+/// Provides managed local storage for imported learning-resource files.
+@riverpod
+LearningResourceFileStorage learningResourceFileStorage(
+  LearningResourceFileStorageRef ref,
+) {
+  return LearningResourceFileStorage();
 }
 
 /// Provides the persistent identity of this MedVault installation.
@@ -71,6 +82,8 @@ Future<LibraryService> libraryService(LibraryServiceRef ref) async {
   final citationRepository = await ref.watch(citationRepositoryProvider.future);
   final bookmarkRepository = await ref.watch(bookmarkRepositoryProvider.future);
   final historyRepository = await ref.watch(historyRepositoryProvider.future);
+  final learningResourceRepository =
+      await ref.watch(learningResourceRepositoryProvider.future);
   final syncMetadataFactory =
       await ref.watch(syncMetadataFactoryProvider.future);
   final clock = ref.watch(clockProvider);
@@ -82,6 +95,7 @@ Future<LibraryService> libraryService(LibraryServiceRef ref) async {
     citationRepository: citationRepository,
     bookmarkRepository: bookmarkRepository,
     historyRepository: historyRepository,
+    learningResourceRepository: learningResourceRepository,
     generateUuid: uuidGenerator.call,
     createSyncMetadata: syncMetadataFactory.call,
     now: clock.now,
@@ -118,6 +132,15 @@ Future<BookmarkRepository> bookmarkRepository(
 ) async {
   final isar = await ref.watch(appDatabaseProvider.future);
   return IsarBookmarkRepository(isar);
+}
+
+/// Provides the learning-resource repository backed by the application's Isar database.
+@riverpod
+Future<LearningResourceRepository> learningResourceRepository(
+  LearningResourceRepositoryRef ref,
+) async {
+  final isar = await ref.watch(appDatabaseProvider.future);
+  return IsarLearningResourceRepository(isar);
 }
 
 /// Provides the history repository backed by the application's Isar database.

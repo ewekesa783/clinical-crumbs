@@ -118,7 +118,7 @@ void main() {
     expect(pack.manifest.formatVersion, currentCurriculumPackFormatVersion);
     expect(pack.manifest.packUuid, 'generated-backup-id');
     expect(pack.manifest.version, 1);
-    expect(pack.manifest.title, 'MedVault Full Backup');
+    expect(pack.manifest.title, 'Clinical Crumbs Full Backup');
 
     expect(pack.taxonomyNodes, hasLength(2));
     final subject = pack.taxonomyNodes.singleWhere(

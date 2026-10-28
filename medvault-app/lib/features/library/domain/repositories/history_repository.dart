@@ -13,6 +13,12 @@ abstract class HistoryRepository {
   /// (it does not).
   Future<void> save(History history);
 
+  /// Removes the history entry associated with a resource UUID.
+  Future<void> deleteByNoteUuid(String noteUuid);
+
+  /// Removes all history entries while preserving the resources themselves.
+  Future<void> deleteAll();
+
   Future<History?> getByUuid(String uuid);
 
   /// Renamed from the earlier `getMostRecentByNoteUuid` during Task

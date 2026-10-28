@@ -494,4 +494,60 @@ More real content.
     expect(find.text('Nelson Textbook of Pediatrics'), findsOneWidget);
     expect(find.text('Kliegman et al. · 2024 · p. 120'), findsOneWidget);
   });
+
+  testWidgets('restores the saved scroll position when reopening a note',
+      (tester) async {
+    final longBody = List.generate(
+      24,
+      (index) => '## Section ${index + 1}\n\n'
+          '${List.filled(8, 'Sample reading content for testing scroll restoration.').join(' ')}',
+    ).join('\n\n');
+
+    final note = makeNote(
+      uuid: 'note-scroll-restore',
+      bodyMarkdown: longBody,
+    );
+    final data = NoteWithCitations(note: note, citations: const []);
+
+    await tester.pumpWidget(
+      buildTestApp(
+        noteUuid: note.uuid,
+        value: AsyncData<NoteWithCitations?>(data),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final scrollView = find.byType(SingleChildScrollView);
+    await tester.drag(scrollView, const Offset(0, -700));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    final savedOffset =
+        testPreferences.getDouble('reader.scrollOffset.${note.uuid}');
+    expect(savedOffset, isNotNull);
+    expect(savedOffset!, greaterThan(0));
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    await tester.pumpAndSettle();
+
+    await tester.pumpWidget(
+      buildTestApp(
+        noteUuid: note.uuid,
+        value: AsyncData<NoteWithCitations?>(data),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final readerScrollView = find.byWidgetPredicate(
+      (widget) =>
+          widget is SingleChildScrollView && widget.controller != null,
+    );
+    expect(readerScrollView, findsOneWidget);
+
+    final controller =
+        tester.widget<SingleChildScrollView>(readerScrollView).controller!;
+    expect(controller.offset, greaterThan(0));
+    expect(controller.offset, closeTo(savedOffset, 1));
+  });
+
 }

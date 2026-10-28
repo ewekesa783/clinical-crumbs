@@ -38,6 +38,13 @@ class IsarBookmarkRepository implements BookmarkRepository {
   }
 
   @override
+  Future<void> deleteAll() async {
+    await _isar.writeTxn(() async {
+      await _isar.bookmarkModels.where().deleteAll();
+    });
+  }
+
+  @override
   Future<Bookmark?> getByUuid(String uuid) async {
     final model =
         await _isar.bookmarkModels.where().uuidEqualTo(uuid).findFirst();

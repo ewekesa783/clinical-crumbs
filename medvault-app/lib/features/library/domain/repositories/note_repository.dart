@@ -3,6 +3,9 @@ import '../entities/note.dart';
 abstract class NoteRepository {
   Future<void> save(Note note);
 
+  /// Permanently removes a note by UUID.
+  Future<void> deleteByUuid(String uuid);
+
   Future<Note?> getByUuid(String uuid);
 
   Future<Note?> getByTopicAndMode(String topicUuid, Mode mode);

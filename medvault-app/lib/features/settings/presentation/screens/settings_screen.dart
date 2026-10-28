@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/appearance_preferences.dart';
 import '../../data/reading_preferences.dart';
+import '../widgets/content_updates_settings_section.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -26,7 +27,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Personalise how MedVault looks on your device.',
+            'Personalise how Clinical Crumbs looks on your device.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: colors.onSurfaceVariant,
                 ),
@@ -103,6 +104,13 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 28),
           Text(
+            'Content updates',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          const ContentUpdatesSettingsSection(),
+          const SizedBox(height: 28),
+          Text(
             'About',
             style: Theme.of(context).textTheme.titleLarge,
           ),
@@ -110,7 +118,7 @@ class SettingsScreen extends ConsumerWidget {
           const Card(
             child: ListTile(
               leading: Icon(Icons.info_outline),
-              title: Text('MedVault'),
+              title: Text('Clinical Crumbs'),
               subtitle: Text(
                 'Your personal, offline-first learning library.',
               ),

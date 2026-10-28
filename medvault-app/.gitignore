@@ -16,3 +16,12 @@ build/
 
 # Android release signing
 android/key.properties
+
+# Local working backups and temporary experiments
+*.bak
+*.bak-*
+*.backup
+*.backup-*
+*.before_startup_screen-*
+startup-experiment-backup/
+startup-experiment-backup-*/

@@ -1,5 +1,10 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,7 +14,6 @@ import '../../domain/entities/citation.dart';
 import '../../domain/services/dto/note_with_citations.dart';
 import '../providers/note_bookmark_provider.dart';
 import '../providers/note_reader_provider.dart';
-import '../../../settings/data/reading_preferences.dart';
 
 /// Displays a single note and its resolved citations.
 class NoteReaderScreen extends ConsumerWidget {
@@ -33,13 +37,14 @@ class NoteReaderScreen extends ConsumerWidget {
         ),
         actions: [
           if (noteAsync.hasValue && noteAsync.value != null) ...[
-            IconButton(
-              tooltip: 'Edit note details',
-              icon: const Icon(Icons.edit_outlined),
-              onPressed: () => context.push(
-                '/library/note/$noteUuid/edit',
+            if (kDebugMode)
+              IconButton(
+                tooltip: 'Edit note details',
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () => context.push(
+                  '/library/note/$noteUuid/edit',
+                ),
               ),
-            ),
             _BookmarkButton(noteUuid: noteUuid),
           ],
         ],
@@ -139,7 +144,72 @@ class _NoteReaderContent extends ConsumerStatefulWidget {
 
 class _NoteReaderContentState extends ConsumerState<_NoteReaderContent> {
   final Map<int, GlobalKey> _sectionKeys = {};
+  final ScrollController _scrollController = ScrollController();
   String? _lastMarkdown;
+  Timer? _saveTimer;
+  bool _hasRestoredPosition = false;
+
+  String get _positionKey => 'reader.scrollOffset.${widget.data.note.uuid}';
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restoreScrollPosition();
+    });
+  }
+
+  void _onScroll() {
+    if (!_hasRestoredPosition) return;
+
+    _saveTimer?.cancel();
+    _saveTimer = Timer(
+      const Duration(milliseconds: 500),
+      _saveScrollPosition,
+    );
+  }
+
+  Future<void> _restoreScrollPosition() async {
+    final key = _positionKey;
+    final preferences = await SharedPreferences.getInstance();
+    if (!mounted || !_scrollController.hasClients || key != _positionKey) {
+      return;
+    }
+
+    final savedOffset = preferences.getDouble(key) ?? 0.0;
+    final position = _scrollController.position;
+    final targetOffset = savedOffset.clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+
+    _scrollController.jumpTo(targetOffset);
+    _hasRestoredPosition = true;
+  }
+
+  Future<void> _saveScrollPosition() async {
+    if (!_hasRestoredPosition || !_scrollController.hasClients) return;
+
+    final key = _positionKey;
+    final offset = _scrollController.offset;
+    final preferences = await SharedPreferences.getInstance();
+
+    if (!mounted || key != _positionKey) return;
+    await preferences.setDouble(key, offset);
+  }
+
+  @override
+  void dispose() {
+    _saveTimer?.cancel();
+    if (_hasRestoredPosition && _scrollController.hasClients) {
+      unawaited(_saveScrollPosition());
+    }
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
 
   List<_NoteSection> _parseSections(String markdown) {
     final sections = <_NoteSection>[];
@@ -215,17 +285,14 @@ class _NoteReaderContentState extends ConsumerState<_NoteReaderContent> {
         .where((entry) => entry.value.heading != null)
         .toList();
 
-    final readingSize = ref.watch(readingPreferencesProvider);
-    final baseTheme = Theme.of(context);
-    final readingTheme = baseTheme.copyWith(
-      textTheme: baseTheme.textTheme.apply(
-        fontSizeFactor: readingSize.scale,
-      ),
-    );
+    // The app-wide theme already applies the selected reading-size scale.
+    // Reuse it here so reader text is not scaled a second time.
+    final readingTheme = Theme.of(context);
 
     return Theme(
       data: readingTheme,
       child: SingleChildScrollView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,6 +353,10 @@ class _NoteReaderContentState extends ConsumerState<_NoteReaderContent> {
                     if (section.markdown.isNotEmpty)
                       MarkdownBody(
                         data: section.markdown,
+                        inlineSyntaxes: [_ClinicalCrumbsHighlightSyntax()],
+                        builders: {
+                          'cc-highlight': _ClinicalCrumbsHighlightBuilder(),
+                        },
                         selectable: true,
                         onTapLink: (text, href, title) async {
                           if (href == null) return;
@@ -459,6 +530,56 @@ class _CitationTile extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+
+/// Parses the private highlight markers produced by the standalone JSON importer.
+class _ClinicalCrumbsHighlightSyntax extends md.InlineSyntax {
+  _ClinicalCrumbsHighlightSyntax()
+      : super(
+          r'\[\[CC_HL:(#[0-9a-fA-F]{6})\]\]([\s\S]*?)\[\[/CC_HL\]\]',
+        );
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    final element = md.Element.text('cc-highlight', match[2]!);
+    element.attributes['color'] = match[1]!;
+    parser.addNode(element);
+    return true;
+  }
+}
+
+/// Displays imported highlighted text using its specified background colour.
+class _ClinicalCrumbsHighlightBuilder extends MarkdownElementBuilder {
+  _ClinicalCrumbsHighlightBuilder();
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final value = element.attributes['color'];
+    if (value == null || !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(value)) {
+      return null;
+    }
+
+    final rgb = int.parse(value.substring(1), radix: 16);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Color(0xFF000000 | rgb),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 1),
+        child: Text(
+          element.textContent,
+          style: preferredStyle ?? parentStyle,
+        ),
+      ),
     );
   }
 }

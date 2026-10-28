@@ -46,9 +46,9 @@ class CurriculumPackExporter {
         formatVersion: currentCurriculumPackFormatVersion,
         packUuid: _generatePackUuid(),
         version: 1,
-        title: 'MedVault Full Backup',
+        title: 'Clinical Crumbs Full Backup',
         description:
-            'Portable backup of curriculum content exported from MedVault.',
+            'Portable backup of curriculum content exported from Clinical Crumbs.',
       ),
       taxonomyNodes: taxonomyModels
           .map(

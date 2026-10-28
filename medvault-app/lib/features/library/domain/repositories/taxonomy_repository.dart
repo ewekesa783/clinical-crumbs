@@ -6,6 +6,7 @@ import '../entities/taxonomy_node.dart';
 /// types cross this boundary.
 abstract class TaxonomyRepository {
   Future<void> save(TaxonomyNode node);
+  Future<void> deleteByUuid(String uuid);
 
   Future<TaxonomyNode?> getByUuid(String uuid);
 

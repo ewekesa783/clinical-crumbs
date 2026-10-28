@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,6 +7,7 @@ import '../debug/component_gallery_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/home/presentation/screens/recent_history_screen.dart';
 import '../../features/library/presentation/screens/library_screen.dart';
+import '../../features/library/presentation/screens/learning_resource_reader_screen.dart';
 import '../../features/library/presentation/screens/note_reader_screen.dart';
 import '../../features/library/presentation/screens/note_edit_screen.dart';
 import '../../features/library/presentation/screens/taxonomy_browser_screen.dart';
@@ -33,6 +35,20 @@ class TaxonomyBrowserRoute extends GoRouteData {
   @override
   Widget build(BuildContext context, GoRouterState state) {
     return TaxonomyBrowserScreen(nodeUuid: nodeUuid);
+  }
+}
+
+@TypedGoRoute<LearningResourceReaderRoute>(
+  path: '/library/resource/:resourceUuid',
+)
+class LearningResourceReaderRoute extends GoRouteData {
+  const LearningResourceReaderRoute({required this.resourceUuid});
+
+  final String resourceUuid;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) {
+    return LearningResourceReaderScreen(resourceUuid: resourceUuid);
   }
 }
 
@@ -92,26 +108,40 @@ final GoRouter appRouter = GoRouter(
   routes: [
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
-        return MedVaultShell(
-          onHomeSelected: () {
-            if (navigationShell.currentIndex != 0) {
+        final location = state.uri.path;
+        final isLibraryRoot = location == '/library';
+        final isSettingsRoot = location == '/settings';
+        final shouldReturnToHome = isLibraryRoot || isSettingsRoot;
+
+        return PopScope<Object?>(
+          canPop: !shouldReturnToHome,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop && shouldReturnToHome) {
               FocusManager.instance.primaryFocus?.unfocus();
+              navigationShell.goBranch(0, initialLocation: true);
             }
-            navigationShell.goBranch(0, initialLocation: false);
           },
-          onLibrarySelected: () {
-            if (navigationShell.currentIndex != 1) {
-              FocusManager.instance.primaryFocus?.unfocus();
-            }
-            navigationShell.goBranch(1, initialLocation: false);
-          },
-          onSettingsSelected: () {
-            if (navigationShell.currentIndex != 2) {
-              FocusManager.instance.primaryFocus?.unfocus();
-            }
-            navigationShell.goBranch(2, initialLocation: false);
-          },
-          child: navigationShell,
+          child: MedVaultShell(
+            onHomeSelected: () {
+              if (navigationShell.currentIndex != 0) {
+                FocusManager.instance.primaryFocus?.unfocus();
+              }
+              navigationShell.goBranch(0, initialLocation: true);
+            },
+            onLibrarySelected: () {
+              if (navigationShell.currentIndex != 1) {
+                FocusManager.instance.primaryFocus?.unfocus();
+              }
+              navigationShell.goBranch(1, initialLocation: false);
+            },
+            onSettingsSelected: () {
+              if (navigationShell.currentIndex != 2) {
+                FocusManager.instance.primaryFocus?.unfocus();
+              }
+              navigationShell.goBranch(2, initialLocation: false);
+            },
+            child: navigationShell,
+          ),
         );
       },
       branches: [
@@ -144,17 +174,24 @@ final GoRouter appRouter = GoRouter(
                   ),
                 ),
                 GoRoute(
+                  path: 'resource/:resourceUuid',
+                  builder: (context, state) => LearningResourceReaderScreen(
+                    resourceUuid: state.pathParameters['resourceUuid']!,
+                  ),
+                ),
+                GoRoute(
                   path: 'note/:noteUuid',
                   builder: (context, state) => NoteReaderScreen(
                     noteUuid: state.pathParameters['noteUuid']!,
                   ),
                   routes: [
-                    GoRoute(
-                      path: 'edit',
-                      builder: (context, state) => NoteEditScreen(
-                        noteUuid: state.pathParameters['noteUuid']!,
+                    if (kDebugMode)
+                      GoRoute(
+                        path: 'edit',
+                        builder: (context, state) => NoteEditScreen(
+                          noteUuid: state.pathParameters['noteUuid']!,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ],

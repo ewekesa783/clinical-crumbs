@@ -6,10 +6,12 @@ import 'package:medvault_app/features/library/domain/entities/bookmark.dart';
 import 'package:medvault_app/features/library/domain/entities/citation.dart';
 import 'package:medvault_app/features/library/domain/entities/history.dart';
 import 'package:medvault_app/features/library/domain/entities/note.dart';
+import 'package:medvault_app/features/library/domain/entities/learning_resource.dart';
 import 'package:medvault_app/features/library/domain/repositories/bookmark_repository.dart';
 import 'package:medvault_app/features/library/domain/repositories/citation_repository.dart';
 import 'package:medvault_app/features/library/domain/repositories/history_repository.dart';
 import 'package:medvault_app/features/library/domain/repositories/note_repository.dart';
+import 'package:medvault_app/features/library/domain/repositories/learning_resource_repository.dart';
 import 'package:medvault_app/features/library/domain/services/dto/topic_notes.dart';
 import 'package:medvault_app/features/library/domain/services/library_service.dart';
 import 'package:medvault_app/features/library/domain/services/taxonomy_navigation_service.dart';
@@ -18,6 +20,8 @@ import 'package:medvault_app/core/di/injector.dart';
 import 'package:medvault_app/features/library/presentation/providers/taxonomy_browser_provider.dart';
 
 class _FakeTaxonomyRepository implements TaxonomyRepository {
+  @override
+  Future<void> deleteByUuid(String uuid) async => nodes.remove(uuid);
   _FakeTaxonomyRepository(this.nodes);
 
   final Map<String, TaxonomyNode> nodes;
@@ -55,9 +59,28 @@ class _FakeLibraryService extends LibraryService {
   }
 }
 
+class _FakeLearningResourceRepository implements LearningResourceRepository {
+  @override
+  Future<void> save(LearningResource resource) async {}
+
+  @override
+  Future<LearningResource?> getByUuid(String uuid) async => null;
+
+  @override
+  Future<List<LearningResource>> getByTopicUuid(String topicUuid) async => [];
+
+  @override
+  Future<List<LearningResource>> getAll() async => [];
+
+  @override
+  Future<void> deleteByUuid(String uuid) async {}
+}
+
 class _FakeNoteRepository implements NoteRepository {
   @override
   Future<void> save(Note note) async {}
+  @override
+  Future<void> deleteByUuid(String uuid) async {}
   @override
   Future<Note?> getByUuid(String uuid) async => null;
   @override
@@ -87,6 +110,8 @@ class _FakeBookmarkRepository implements BookmarkRepository {
   @override
   Future<void> deleteByNoteUuid(String noteUuid) async {}
   @override
+  Future<void> deleteAll() async {}
+  @override
   Future<List<Bookmark>> getByNoteUuid(String noteUuid) async => [];
 
   @override
@@ -94,6 +119,10 @@ class _FakeBookmarkRepository implements BookmarkRepository {
 }
 
 class _FakeHistoryRepository implements HistoryRepository {
+  @override
+  Future<void> deleteByNoteUuid(String noteUuid) async {}
+  @override
+  Future<void> deleteAll() async {}
   @override
   Future<void> save(History history) async {}
   @override
@@ -106,6 +135,8 @@ class _FakeHistoryRepository implements HistoryRepository {
 }
 
 class _UnusedTaxonomyRepository implements TaxonomyRepository {
+  @override
+  Future<void> deleteByUuid(String uuid) async => throw UnimplementedError();
   @override
   Future<void> save(TaxonomyNode node) async => throw UnimplementedError();
   @override
@@ -180,6 +211,9 @@ void main() {
               TaxonomyNavigationService(taxonomyRepository: repository),
         ),
         libraryServiceProvider.overrideWith((ref) async => libraryService),
+        learningResourceRepositoryProvider.overrideWith(
+          (ref) async => _FakeLearningResourceRepository(),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -206,6 +240,9 @@ void main() {
               TaxonomyNavigationService(taxonomyRepository: repository),
         ),
         libraryServiceProvider.overrideWith((ref) async => libraryService),
+        learningResourceRepositoryProvider.overrideWith(
+          (ref) async => _FakeLearningResourceRepository(),
+        ),
       ],
     );
     addTearDown(container.dispose);

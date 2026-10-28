@@ -17,6 +17,8 @@ import 'package:medvault_app/features/library/domain/services/library_service.da
 // to test coordination logic).
 
 class _FakeTaxonomyRepository implements TaxonomyRepository {
+  @override
+  Future<void> deleteByUuid(String uuid) async => _store.remove(uuid);
   final Map<String, TaxonomyNode> _store = {};
 
   @override
@@ -38,6 +40,8 @@ class _FakeNoteRepository implements NoteRepository {
   @override
   Future<void> save(Note note) async => _store[note.uuid] = note;
 
+  @override
+  Future<void> deleteByUuid(String uuid) async => _store.remove(uuid);
   @override
   Future<Note?> getByUuid(String uuid) async => _store[uuid];
 
@@ -102,6 +106,9 @@ class _FakeBookmarkRepository implements BookmarkRepository {
   }
 
   @override
+  Future<void> deleteAll() async => _store.clear();
+
+  @override
   Future<List<Bookmark>> getByNoteUuid(String noteUuid) async =>
       _store.values.where((b) => b.noteUuid == noteUuid).toList();
 
@@ -116,6 +123,14 @@ class _FakeBookmarkRepository implements BookmarkRepository {
 
 class _FakeHistoryRepository implements HistoryRepository {
   final Map<String, History> _store = {};
+
+  @override
+  Future<void> deleteByNoteUuid(String noteUuid) async {
+    _store.removeWhere((_, history) => history.noteUuid == noteUuid);
+  }
+
+  @override
+  Future<void> deleteAll() async => _store.clear();
 
   @override
   Future<void> save(History history) async => _store[history.uuid] = history;
@@ -214,15 +229,16 @@ void main() {
       isPinned: true,
       createdAt: createdAt,
       updatedAt: DateTime.utc(2026, 1, 1),
-      sync: sync ?? SyncMetadata(
-        remoteId: 'remote-1',
-        lastModifiedLocal: DateTime.utc(2026, 1, 1),
-        lastSyncedAt: DateTime.utc(2026, 1, 2),
-        isDirty: false,
-        isDeleted: false,
-        deviceId: 'device-original',
-        syncRevision: 7,
-      ),
+      sync: sync ??
+          SyncMetadata(
+            remoteId: 'remote-1',
+            lastModifiedLocal: DateTime.utc(2026, 1, 1),
+            lastSyncedAt: DateTime.utc(2026, 1, 2),
+            isDirty: false,
+            isDeleted: false,
+            deviceId: 'device-original',
+            syncRevision: 7,
+          ),
     );
   }
 
@@ -277,8 +293,8 @@ void main() {
       ),
       throwsArgumentError,
     );
-    expect((await noteRepository.getByUuid(original.uuid))!.title,
-        original.title);
+    expect(
+        (await noteRepository.getByUuid(original.uuid))!.title, original.title);
   });
 
   test('updateNoteMetadata rejects a missing destination topic', () async {
@@ -359,8 +375,8 @@ void main() {
       ),
       throwsA(isA<StateError>()),
     );
-    expect((await noteRepository.getByUuid(original.uuid))!.title,
-        original.title);
+    expect(
+        (await noteRepository.getByUuid(original.uuid))!.title, original.title);
   });
 
   test('recordNoteViewed creates a new History entry on first view', () async {
@@ -383,6 +399,40 @@ void main() {
     final second = await historyRepository.getByNoteUuid('note-1');
 
     expect(second!.uuid, first!.uuid);
+    expect(second.viewedAt, DateTime.utc(2026, 1, 2));
+  });
+
+  test('recordResourceViewed creates a History entry for a PDF resource',
+      () async {
+    await service.recordResourceViewed(
+      'pdf-1',
+      viewedAt: DateTime.utc(2026, 1, 1),
+    );
+
+    final entry = await historyRepository.getByNoteUuid('pdf-1');
+    expect(entry, isNotNull);
+    expect(entry!.uuid, 'generated-0');
+    expect(entry.noteUuid, 'pdf-1');
+    expect(entry.viewedAt, DateTime.utc(2026, 1, 1));
+  });
+
+  test('recordResourceViewed updates the existing PDF history entry',
+      () async {
+    await service.recordResourceViewed(
+      'pdf-1',
+      viewedAt: DateTime.utc(2026, 1, 1),
+    );
+    final first = await historyRepository.getByNoteUuid('pdf-1');
+
+    await service.recordResourceViewed(
+      'pdf-1',
+      viewedAt: DateTime.utc(2026, 1, 2),
+    );
+    final second = await historyRepository.getByNoteUuid('pdf-1');
+
+    expect(second, isNotNull);
+    expect(second!.uuid, first!.uuid);
+    expect(second.noteUuid, 'pdf-1');
     expect(second.viewedAt, DateTime.utc(2026, 1, 2));
   });
 
@@ -610,4 +660,69 @@ void main() {
     await service.bookmarkNote('note-1');
     expect(await service.isNoteBookmarked('note-1'), isTrue);
   });
+
+  test('unbookmarkResource removes only the selected resource bookmark', () async {
+    for (final uuid in ['note-a', 'note-b']) {
+      await bookmarkRepository.save(Bookmark(
+        uuid: 'bookmark-$uuid',
+        noteUuid: uuid,
+        label: null,
+        createdAt: DateTime.utc(2026, 1, 1),
+        sync: _sync(),
+      ));
+    }
+
+    await service.unbookmarkResource('note-a');
+
+    expect(await bookmarkRepository.getByNoteUuid('note-a'), isEmpty);
+    expect(await bookmarkRepository.getByNoteUuid('note-b'), hasLength(1));
+  });
+
+  test('clearAllBookmarks removes all bookmark records', () async {
+    for (final uuid in ['note-a', 'note-b']) {
+      await bookmarkRepository.save(Bookmark(
+        uuid: 'bookmark-$uuid',
+        noteUuid: uuid,
+        label: null,
+        createdAt: DateTime.utc(2026, 1, 1),
+        sync: _sync(),
+      ));
+    }
+
+    await service.clearAllBookmarks();
+
+    expect(await bookmarkRepository.getRecent(limit: 100), isEmpty);
+  });
+
+  test('removeHistoryEntry removes only the selected history entry', () async {
+    for (final uuid in ['note-a', 'note-b']) {
+      await historyRepository.save(History(
+        uuid: 'history-$uuid',
+        noteUuid: uuid,
+        viewedAt: DateTime.utc(2026, 1, 1),
+        sync: _sync(),
+      ));
+    }
+
+    await service.removeHistoryEntry('note-a');
+
+    expect(await historyRepository.getByNoteUuid('note-a'), isNull);
+    expect(await historyRepository.getByNoteUuid('note-b'), isNotNull);
+  });
+
+  test('clearHistory removes all history records', () async {
+    for (final uuid in ['note-a', 'note-b']) {
+      await historyRepository.save(History(
+        uuid: 'history-$uuid',
+        noteUuid: uuid,
+        viewedAt: DateTime.utc(2026, 1, 1),
+        sync: _sync(),
+      ));
+    }
+
+    await service.clearHistory();
+
+    expect(await historyRepository.getRecent(limit: null), isEmpty);
+  });
+
 }

@@ -1,6 +1,6 @@
 name: medvault_app
-description: MedVault — offline-first medical education application.
-version: 0.0.1+1
+description: Clinical Crumbs — offline-first medical education application.
+version: 1.0.0+1
 publish_to: 'none'
 
 environment:
@@ -21,9 +21,17 @@ dependencies:
   path_provider: ^2.1.0
   uuid: ^4.6.0
   flutter_markdown_plus: 1.0.0+1
+  markdown: 7.3.0
   url_launcher: 6.3.0
   file_picker: ^8.3.7
   shared_preferences: ^2.5.3
+  pdfx: "2.8.0"
+  archive: ^4.5.2
+  crypto: ^3.0.7
+  http: ^1.2.2
+  package_info_plus: 8.0.2
+  webview_flutter: 4.9.0
+  share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:
@@ -36,3 +44,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/bootstrap/medvault-starter-library.zip
+    - assets/images/icons/library_books.png
+    - assets/images/branding/clinical_crumbs_logo.png

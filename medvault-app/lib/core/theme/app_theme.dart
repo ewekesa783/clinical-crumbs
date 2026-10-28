@@ -9,10 +9,10 @@ class AppTheme {
 
   static ThemeData get light {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
+      seedColor: AppColors.lightPrimary,
       brightness: Brightness.light,
     ).copyWith(
-      primary: AppColors.primary,
+      primary: AppColors.lightPrimary,
       error: AppColors.error,
       surface: AppColors.lightSurface,
     );

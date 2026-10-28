@@ -26,6 +26,20 @@ class IsarHistoryRepository implements HistoryRepository {
   }
 
   @override
+  Future<void> deleteByNoteUuid(String noteUuid) async {
+    await _isar.writeTxn(() async {
+      await _isar.historyModels.where().noteUuidEqualTo(noteUuid).deleteAll();
+    });
+  }
+
+  @override
+  Future<void> deleteAll() async {
+    await _isar.writeTxn(() async {
+      await _isar.historyModels.where().deleteAll();
+    });
+  }
+
+  @override
   Future<History?> getByUuid(String uuid) async {
     final model =
         await _isar.historyModels.where().uuidEqualTo(uuid).findFirst();

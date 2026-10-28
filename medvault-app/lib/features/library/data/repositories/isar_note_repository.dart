@@ -32,6 +32,13 @@ class IsarNoteRepository implements NoteRepository {
   }
 
   @override
+  Future<void> deleteByUuid(String uuid) async {
+    await _isar.writeTxn(() async {
+      await _isar.noteModels.where().uuidEqualTo(uuid).deleteAll();
+    });
+  }
+
+  @override
   Future<Note?> getByUuid(String uuid) async {
     final model = await _isar.noteModels.where().uuidEqualTo(uuid).findFirst();
     if (model == null) return null;

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
@@ -11,10 +11,13 @@ import 'package:medvault_app/core/constants/spacing_tokens.dart';
 import 'package:medvault_app/core/di/injector.dart';
 import 'package:medvault_app/features/library/data/repositories/curriculum_pack_importer.dart';
 import 'package:medvault_app/features/library/data/repositories/curriculum_pack_exporter.dart';
+import 'package:medvault_app/features/library/data/repositories/full_library_backup_exporter.dart';
 import 'package:medvault_app/features/library/domain/entities/note.dart';
 import 'package:medvault_app/features/library/domain/entities/taxonomy_node.dart';
 import 'package:medvault_app/features/library/presentation/providers/library_roots_provider.dart';
 import 'package:medvault_app/features/library/presentation/providers/note_search_provider.dart';
+import 'package:medvault_app/features/library/presentation/screens/topic_package_preview_screen.dart';
+import 'package:medvault_app/features/library/presentation/screens/prototype_topic_package_preview_screen.dart';
 
 /// Library landing screen.
 ///
@@ -104,29 +107,58 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       appBar: AppBar(
         title: const Text('Library'),
         actions: [
-          IconButton(
-            tooltip: 'Export backup',
-            onPressed: (_isImporting || _isExporting) ? null : _exportBackup,
-            icon: _isExporting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.file_download_outlined),
-          ),
-          IconButton(
-            tooltip: 'Import curriculum pack',
-            onPressed:
-                (_isImporting || _isExporting) ? null : _importCurriculumPack,
-            icon: _isImporting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.file_upload_outlined),
-          ),
+          if (kDebugMode) ...[
+            IconButton(
+              tooltip: 'Preview topic package',
+              onPressed: (_isImporting || _isExporting)
+                  ? null
+                  : () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const TopicPackagePreviewScreen(),
+                        ),
+                      );
+                    },
+              icon: const Icon(Icons.preview_outlined),
+            ),
+            IconButton(
+              tooltip: 'Preview prototype lesson',
+              onPressed: (_isImporting || _isExporting)
+                  ? null
+                  : () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              const PrototypeTopicPackagePreviewScreen(),
+                        ),
+                      );
+                    },
+              icon: const Icon(Icons.auto_stories_outlined),
+            ),
+            IconButton(
+              tooltip: 'Export backup',
+              onPressed: (_isImporting || _isExporting) ? null : _exportBackup,
+              icon: _isExporting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.file_download_outlined),
+            ),
+            IconButton(
+              tooltip: 'Import curriculum pack',
+              onPressed:
+                  (_isImporting || _isExporting) ? null : _importCurriculumPack,
+              icon: _isImporting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.file_upload_outlined),
+            ),
+          ],
         ],
       ),
       body: Column(
@@ -144,7 +176,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               onChanged: _onSearchChanged,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: 'Search notes by title, text or tag',
+                hintText: 'Search sections, notes, PDFs, or tags',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -169,13 +201,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   ],
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(32),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(32),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(32),
                 ),
               ),
             ),
@@ -346,30 +378,40 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 
   Future<void> _exportBackup() async {
+    if (!kDebugMode) return;
     setState(() => _isExporting = true);
 
     try {
       final isar = await ref.read(appDatabaseProvider.future);
-      final pack = await CurriculumPackExporter(isar: isar).exportPack();
-      final json = const JsonEncoder.withIndent('  ').convert(pack.toJson());
-      final bytes = Uint8List.fromList(utf8.encode(json));
+      final fileStorage = ref.read(learningResourceFileStorageProvider);
+      final bytes = await FullLibraryBackupExporter(
+        isar: isar,
+        fileStorage: fileStorage,
+      ).exportZip();
 
       if (!mounted) return;
 
       final savedPath = await FilePicker.platform.saveFile(
-        dialogTitle: 'Export MedVault backup',
-        fileName: 'medvault-backup.json',
+        dialogTitle: 'Export Clinical Crumbs full-library backup',
+        fileName: 'clinical-crumbs-full-backup.zip',
         type: FileType.custom,
-        allowedExtensions: ['json'],
+        allowedExtensions: ['zip'],
         bytes: bytes,
       );
 
       if (!mounted || savedPath == null) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Backup exported successfully.')),
+        const SnackBar(
+          content: Text('Full-library backup exported successfully.'),
+        ),
       );
     } on CurriculumPackExportException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } on FullLibraryBackupExportException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error.message)),
@@ -390,7 +432,120 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     }
   }
 
+  Future<bool> _confirmCurriculumPackImport(CurriculumPack pack) async {
+    final validation = const CurriculumPackValidator().validate(pack);
+
+    if (!mounted) return false;
+
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Preview curriculum pack'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      pack.manifest.title,
+                      style: Theme.of(dialogContext).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Pack version: ${pack.manifest.version}'),
+                    Text(
+                      'Format version: ${pack.manifest.formatVersion}',
+                    ),
+                    if (pack.manifest.description?.trim().isNotEmpty ==
+                        true) ...[
+                      const SizedBox(height: 8),
+                      Text(pack.manifest.description!),
+                    ],
+                    const Divider(height: 24),
+                    Text('Taxonomy nodes: ${pack.taxonomyNodes.length}'),
+                    Text('Notes: ${pack.notes.length}'),
+                    Text('Citations: ${pack.citations.length}'),
+                    const SizedBox(height: 16),
+                    if (validation.isValid)
+                      const Text(
+                        'Structural validation passed. Existing-record '
+                        'conflicts will be checked before any records are '
+                        'written. Existing data will not be overwritten.',
+                      )
+                    else ...[
+                      Text(
+                        'Validation failed (${validation.issues.length} '
+                        'issue${validation.issues.length == 1 ? '' : 's'}). '
+                        'This pack cannot be imported.',
+                        style: TextStyle(
+                          color: Theme.of(dialogContext).colorScheme.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...validation.issues.take(8).map(
+                            (issue) => Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Text('${issue.path}: ${issue.message}'),
+                            ),
+                          ),
+                      if (validation.issues.length > 8)
+                        Text(
+                          'And ${validation.issues.length - 8} more issue(s).',
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: validation.isValid
+                    ? () => Navigator.of(dialogContext).pop(true)
+                    : null,
+                child: const Text('Import pack'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _showCurriculumPackImportSummary(
+    CurriculumPackImportResult result,
+  ) async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Import complete'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Taxonomy nodes imported: ${result.taxonomyNodesImported}'),
+            Text('Notes imported: ${result.notesImported}'),
+            Text('Citations imported: ${result.citationsImported}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _importCurriculumPack() async {
+    if (!kDebugMode) return;
     setState(() => _isImporting = true);
 
     try {
@@ -420,6 +575,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         Map<String, dynamic>.from(decoded),
       );
 
+      final shouldImport = await _confirmCurriculumPackImport(pack);
+      if (!shouldImport || !mounted) return;
+
       final isar = await ref.read(appDatabaseProvider.future);
       final metadataFactory =
           await ref.read(syncMetadataFactoryProvider.future);
@@ -438,15 +596,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       ref.invalidate(allLibraryNotesProvider);
       ref.invalidate(libraryTaxonomyNodesProvider);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Imported ${result.taxonomyNodesImported} topics, '
-            '${result.notesImported} notes and '
-            '${result.citationsImported} citations.',
-          ),
-        ),
-      );
+      await _showCurriculumPackImportSummary(result);
     } on CurriculumPackImportException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -478,9 +628,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       _selectedMode != null || _selectedTaxonomyUuid != null;
 
   Widget _buildSearchResults(String query) {
-    final resultsAsync = query.length >= 2
-        ? ref.watch(noteSearchProvider(query))
-        : ref.watch(allLibraryNotesProvider);
+    final resultsAsync = ref.watch(librarySearchProvider(query));
 
     return resultsAsync.when(
       loading: () => const Center(
@@ -512,16 +660,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           ),
         ),
       ),
-      data: (notes) {
+      data: (results) {
         final taxonomyNodes =
             ref.watch(libraryTaxonomyNodesProvider).valueOrNull ??
                 <TaxonomyNode>[];
         final selectedNode = _selectedTaxonomyUuid == null
             ? null
             : taxonomyNodes
-                .where(
-                  (node) => node.uuid == _selectedTaxonomyUuid,
-                )
+                .where((node) => node.uuid == _selectedTaxonomyUuid)
                 .firstOrNull;
 
         final includedTopicUuids = selectedNode == null
@@ -535,12 +681,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 .map((node) => node.uuid)
                 .toSet();
 
-        final filteredNotes = notes.where((note) {
+        final filteredNotes = results.notes.where((note) {
           if (_selectedMode != null && note.mode != _selectedMode) {
             return false;
           }
           if (includedTopicUuids != null &&
               !includedTopicUuids.contains(note.topicUuid)) {
+            return false;
+          }
+          return true;
+        }).toList();
+
+        final filteredResources = results.resources.where((resource) {
+          if (includedTopicUuids != null &&
+              !includedTopicUuids.contains(resource.topicUuid)) {
             return false;
           }
           return true;
@@ -575,18 +729,51 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             if (query.length >= 2) {
               final relevanceComparison =
                   relevance(a, query).compareTo(relevance(b, query));
-
               if (relevanceComparison != 0) return relevanceComparison;
             }
-
             return b.updatedAt.compareTo(a.updatedAt);
           });
-        if (sortedNotes.isEmpty) {
+
+        final sortedResources = [...filteredResources]..sort((a, b) {
+            if (query.length >= 2) {
+              final term = query.toLowerCase();
+              final aTitleMatch = a.title.toLowerCase().contains(term);
+              final bTitleMatch = b.title.toLowerCase().contains(term);
+              if (aTitleMatch != bTitleMatch) {
+                return aTitleMatch ? -1 : 1;
+              }
+            }
+            return b.importedAt.compareTo(a.importedAt);
+          });
+
+        final filteredTaxonomyNodes = results.taxonomyNodes
+            .where((node) =>
+                includedTopicUuids == null ||
+                includedTopicUuids.contains(node.uuid))
+            .toList();
+        filteredTaxonomyNodes.sort((a, b) {
+          final aExact = a.title.toLowerCase() == query.trim().toLowerCase();
+          final bExact = b.title.toLowerCase() == query.trim().toLowerCase();
+          if (aExact != bExact) return aExact ? -1 : 1;
+          final aStarts =
+              a.title.toLowerCase().startsWith(query.trim().toLowerCase());
+          final bStarts =
+              b.title.toLowerCase().startsWith(query.trim().toLowerCase());
+          if (aStarts != bStarts) return aStarts ? -1 : 1;
+          final depthComparison = a.depth.compareTo(b.depth);
+          if (depthComparison != 0) return depthComparison;
+          return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+        });
+
+        final totalResults = filteredTaxonomyNodes.length +
+            sortedNotes.length +
+            sortedResources.length;
+        if (totalResults == 0) {
           final message = query.length >= 2
               ? _hasActiveFilters
-                  ? 'No notes found for "$query" with the selected filters.'
-                  : 'No notes found for "$query"'
-              : 'No notes match the selected filters.';
+                  ? 'No library results found for "$query" with the selected filters.'
+                  : 'No library results found for "$query"'
+              : 'No library content matches the selected filters.';
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.xl),
@@ -610,20 +797,56 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 0,
               ),
               child: Text(
-                '${sortedNotes.length} '
-                '${sortedNotes.length == 1 ? 'note' : 'notes'} found',
+                filteredTaxonomyNodes.isEmpty && sortedResources.isEmpty
+                    ? '${sortedNotes.length} ${sortedNotes.length == 1 ? 'note' : 'notes'} found'
+                    : '$totalResults ${totalResults == 1 ? 'result' : 'results'} found',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.all(AppSpacing.lg),
-                itemCount: sortedNotes.length,
+                itemCount: totalResults,
                 separatorBuilder: (_, __) =>
                     const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (context, index) {
-                  final note = sortedNotes[index];
-                  return _buildNoteResult(note);
+                  if (index < filteredTaxonomyNodes.length) {
+                    return _buildTaxonomyResult(
+                      filteredTaxonomyNodes[index],
+                      taxonomyNodes,
+                    );
+                  }
+
+                  final noteIndex = index - filteredTaxonomyNodes.length;
+                  if (noteIndex < sortedNotes.length) {
+                    return _buildNoteResult(sortedNotes[noteIndex],
+                        query: query);
+                  }
+
+                  final resourceIndex = noteIndex - sortedNotes.length;
+                  final resource = sortedResources[resourceIndex];
+                  return Card(
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.sm,
+                      ),
+                      leading: const Icon(Icons.picture_as_pdf_outlined),
+                      title: Text(resource.title),
+                      subtitle: Text(
+                        resource.originalFileName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        LearningResourceReaderRoute(
+                          resourceUuid: resource.uuid,
+                        ).push(context);
+                      },
+                    ),
+                  );
                 },
               ),
             ),
@@ -633,14 +856,80 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     );
   }
 
-  Widget _buildNoteResult(Note note) {
+  Widget _buildTaxonomyResult(
+    TaxonomyNode node,
+    List<TaxonomyNode> allNodes,
+  ) {
+    final parent = node.parentUuid == null
+        ? null
+        : allNodes
+            .where((candidate) => candidate.uuid == node.parentUuid)
+            .firstOrNull;
+
+    final subtitle = parent == null
+        ? _nodeTypeLabel(node.nodeType)
+        : '${_nodeTypeLabel(node.nodeType)} · ${parent.title}';
+
+    return Card(
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.sm,
+        ),
+        leading: Icon(
+          switch (node.nodeType) {
+            NodeType.subject => Icons.menu_book_outlined,
+            NodeType.system => Icons.account_tree_outlined,
+            NodeType.topic => Icons.topic_outlined,
+            NodeType.custom => Icons.folder_outlined,
+          },
+        ),
+        title: Text(node.title),
+        subtitle: Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          FocusManager.instance.primaryFocus?.unfocus();
+          TaxonomyBrowserRoute(nodeUuid: node.uuid).push(context);
+        },
+      ),
+    );
+  }
+
+  Widget _buildNoteResult(Note note, {String query = ''}) {
     final extract = note.plainTextExtract?.trim();
-    final excerptSource =
-        extract != null && extract.isNotEmpty ? extract : note.bodyMarkdown;
-    final excerpt = excerptSource
+    final body = note.bodyMarkdown.trim();
+    final normalizedQuery = query.trim();
+    final queryLower = normalizedQuery.toLowerCase();
+
+    // Prefer whichever text source actually contains the search term.
+    // Title/tag matches fall back to the note's ordinary opening excerpt.
+    final extractMatches = extract != null &&
+        extract.isNotEmpty &&
+        queryLower.isNotEmpty &&
+        extract.toLowerCase().contains(queryLower);
+    final bodyMatches =
+        queryLower.isNotEmpty && body.toLowerCase().contains(queryLower);
+
+    final excerptSource = extractMatches
+        ? extract
+        : bodyMatches
+            ? body
+            : extract != null && extract.isNotEmpty
+                ? extract
+                : body;
+
+    final cleanedExcerpt = excerptSource
+        .replaceAll(RegExp(r'```[\s\S]*?```'), ' ')
+        .replaceAll(RegExp(r'~~~[\s\S]*?~~~'), ' ')
         .replaceAll(RegExp(r'[`*_>#\[\]]'), '')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+    final excerpt = _excerptAroundMatch(cleanedExcerpt, normalizedQuery);
+
     final subtitleParts = <String>[
       _modeLabel(note.mode),
       if (note.tags.isNotEmpty) note.tags.join(' · '),
@@ -667,6 +956,43 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         },
       ),
     );
+  }
+
+  String _excerptAroundMatch(String text, String query) {
+    const contextBefore = 24;
+    const contextAfter = 70;
+    const maxLength = 180;
+
+    if (text.length <= maxLength) return text;
+
+    final term = query.trim();
+    final matchIndex =
+        term.isEmpty ? -1 : text.toLowerCase().indexOf(term.toLowerCase());
+
+    if (matchIndex < 0) {
+      final cutoff = text.lastIndexOf(' ', maxLength);
+      final end = cutoff > 0 ? cutoff : maxLength;
+      return '${text.substring(0, end).trimRight()}…';
+    }
+
+    var start = (matchIndex - contextBefore).clamp(0, text.length).toInt();
+    var end =
+        (matchIndex + term.length + contextAfter).clamp(0, text.length).toInt();
+
+    if (start > 0) {
+      final nextSpace = text.indexOf(' ', start);
+      if (nextSpace >= 0 && nextSpace < matchIndex) {
+        start = nextSpace + 1;
+      }
+    }
+
+    if (end < text.length) {
+      final nextSpace = text.indexOf(' ', end);
+      if (nextSpace >= 0) end = nextSpace;
+    }
+
+    final excerpt = text.substring(start, end).trim();
+    return '${start > 0 ? '…' : ''}$excerpt${end < text.length ? '…' : ''}';
   }
 
   Widget _buildLibraryRoots() {
@@ -730,7 +1056,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   horizontal: AppSpacing.lg,
                   vertical: AppSpacing.sm,
                 ),
-                title: Text(node.title),
+                title: Text(
+                  node.title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,

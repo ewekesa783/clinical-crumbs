@@ -24,6 +24,9 @@ class _FakeNoteRepository implements NoteRepository {
   @override
   Future<void> save(Note note) async {}
 
+
+  @override
+  Future<void> deleteByUuid(String uuid) async {}
   @override
   Future<Note?> getByUuid(String uuid) async => null;
 

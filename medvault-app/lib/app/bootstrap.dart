@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:medvault_app/features/library/data/models/bookmark_model.dart';
 import 'package:medvault_app/features/library/data/models/citation_model.dart';
 import 'package:medvault_app/features/library/data/models/history_model.dart';
+import 'package:medvault_app/features/library/data/models/learning_resource_model.dart';
 import 'package:medvault_app/features/library/data/models/note_model.dart';
 import 'package:medvault_app/features/library/data/models/taxonomy_node_model.dart';
 import 'package:medvault_app/core/storage/device_identity_model.dart';
@@ -22,6 +23,7 @@ Future<Isar> bootstrap() async {
       CitationModelSchema,
       BookmarkModelSchema,
       HistoryModelSchema,
+      LearningResourceModelSchema,
       DeviceIdentityModelSchema,
     ],
     directory: directory.path,

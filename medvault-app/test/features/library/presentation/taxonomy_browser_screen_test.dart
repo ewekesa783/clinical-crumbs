@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../lib/core/sync/sync_metadata.dart';
 import '../../../../lib/features/library/domain/entities/note.dart';
+import '../../../../lib/features/library/domain/entities/learning_resource.dart';
 import '../../../../lib/features/library/domain/entities/taxonomy_node.dart';
 import '../../../../lib/features/library/domain/services/dto/topic_notes.dart';
 import '../../../../lib/features/library/presentation/providers/taxonomy_browser_provider.dart';
@@ -267,6 +268,116 @@ void main() {
     expect(find.text('Cardiology Detailed Notes'), findsOneWidget);
     expect(find.text('Cardiology Quick Review'), findsOneWidget);
     expect(find.text('No learning material yet'), findsNothing);
+  });
+
+  testWidgets('displays PDF resources when a leaf has no notes',
+      (tester) async {
+    final cardiologyNode = makeNode(
+      uuid: 'cardiology',
+      parentUuid: 'medicine',
+      title: 'Cardiology',
+      slug: 'cardiology',
+      depth: 1,
+      sortOrder: 0,
+    );
+
+    final resource = LearningResource(
+      uuid: 'pdf-cardiology',
+      topicUuid: 'cardiology',
+      title: 'Cardiology Illustrated Guide',
+      originalFileName: 'cardiology-guide.pdf',
+      relativeFilePath: 'learning_resources/pdfs/cardiology.pdf',
+      fileSizeBytes: 12345,
+      importedAt: DateTime(2026, 1, 1),
+    );
+
+    final data = TaxonomyBrowserData(
+      node: cardiologyNode,
+      breadcrumb: [medicine, cardiologyNode],
+      children: const [],
+      topicNotes: const TopicNotes(
+        topicUuid: 'cardiology',
+        notes: [],
+      ),
+      resources: [resource],
+    );
+
+    await tester.pumpWidget(buildTestApp(data));
+    await tester.pumpAndSettle();
+
+    expect(find.text('PDF resources'), findsOneWidget);
+    expect(find.text('Cardiology Illustrated Guide'), findsOneWidget);
+    expect(find.text('cardiology-guide.pdf'), findsOneWidget);
+    expect(find.text('No learning material yet'), findsNothing);
+    expect(find.text('Learning material'), findsNothing);
+  });
+
+  testWidgets('navigates to a PDF resource when its card is tapped',
+      (tester) async {
+    final cardiologyNode = makeNode(
+      uuid: 'cardiology',
+      parentUuid: 'medicine',
+      title: 'Cardiology',
+      slug: 'cardiology',
+      depth: 1,
+      sortOrder: 0,
+    );
+
+    final resource = LearningResource(
+      uuid: 'pdf-cardiology',
+      topicUuid: 'cardiology',
+      title: 'Cardiology Illustrated Guide',
+      originalFileName: 'cardiology-guide.pdf',
+      relativeFilePath: 'learning_resources/pdfs/cardiology.pdf',
+      fileSizeBytes: 12345,
+      importedAt: DateTime(2026, 1, 1),
+    );
+
+    final router = GoRouter(
+      initialLocation: '/library/node/cardiology',
+      routes: [
+        GoRoute(
+          path: '/library/node/:nodeUuid',
+          builder: (context, state) => TaxonomyBrowserScreen(
+            nodeUuid: state.pathParameters['nodeUuid']!,
+          ),
+        ),
+        GoRoute(
+          path: '/library/resource/:resourceUuid',
+          builder: (context, state) => Scaffold(
+            body: Text(
+              'Resource: ${state.pathParameters['resourceUuid']}',
+            ),
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          taxonomyBrowserProvider('cardiology').overrideWith(
+            (ref) async => TaxonomyBrowserData(
+              node: cardiologyNode,
+              breadcrumb: [medicine, cardiologyNode],
+              children: const [],
+              topicNotes: const TopicNotes(
+                topicUuid: 'cardiology',
+                notes: [],
+              ),
+              resources: [resource],
+            ),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Cardiology Illustrated Guide'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Resource: pdf-cardiology'), findsOneWidget);
   });
 
   testWidgets('displays genuine empty state for a leaf without notes',

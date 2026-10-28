@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:medvault_app/core/sync/sync_metadata.dart';
 import 'package:medvault_app/features/library/domain/entities/note.dart';
+import 'package:medvault_app/features/library/domain/entities/learning_resource.dart';
 import 'package:medvault_app/features/library/presentation/providers/note_search_provider.dart';
 import 'package:medvault_app/features/library/domain/entities/taxonomy_node.dart';
 import 'package:medvault_app/features/library/presentation/providers/library_roots_provider.dart';
@@ -57,6 +58,7 @@ void main() {
   Widget buildTestApp(List<TaxonomyNode> roots) {
     return ProviderScope(
       overrides: [
+        allLearningResourcesProvider.overrideWith((ref) async => const []),
         libraryRootsProvider.overrideWith((ref) async => roots),
       ],
       child: MaterialApp(
@@ -103,6 +105,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          allLearningResourcesProvider.overrideWith((ref) async => const []),
           libraryRootsProvider.overrideWith((ref) async => nodes),
           libraryTaxonomyNodesProvider.overrideWith((ref) async => nodes),
           allLibraryNotesProvider
@@ -205,6 +208,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          allLearningResourcesProvider.overrideWith((ref) async => const []),
           libraryRootsProvider.overrideWith((ref) async => nodes),
           libraryTaxonomyNodesProvider.overrideWith(
             (ref) async => [medicine, cardiology, nodes.last],
@@ -276,6 +280,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          allLearningResourcesProvider.overrideWith((ref) async => const []),
           libraryRootsProvider.overrideWith((ref) async => nodes),
         ],
         child: MaterialApp.router(routerConfig: router),
@@ -321,7 +326,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          allLearningResourcesProvider.overrideWith((ref) async => const []),
           libraryRootsProvider.overrideWith((ref) async => nodes),
+          libraryTaxonomyNodesProvider.overrideWith((ref) async => nodes),
           noteSearchProvider('heart').overrideWith(
             (ref) async => [searchNote],
           ),
@@ -350,6 +357,50 @@ void main() {
     );
     expect(find.text('Medicine'), findsNothing);
   });
+  testWidgets('searches imported PDFs by title and original filename', (
+    tester,
+  ) async {
+    final pdf = LearningResource(
+      uuid: 'neurology-pdf',
+      topicUuid: 'root-1',
+      title: 'Neurology Review',
+      originalFileName: 'lecture-2026.pdf',
+      relativeFilePath: 'resources/lecture-2026.pdf',
+      fileSizeBytes: 1024,
+      importedAt: DateTime(2026, 1, 1),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          libraryRootsProvider.overrideWith((ref) async => nodes),
+          libraryTaxonomyNodesProvider.overrideWith((ref) async => nodes),
+          noteSearchProvider('neuro').overrideWith((ref) async => []),
+          noteSearchProvider('lecture').overrideWith((ref) async => []),
+          allLearningResourcesProvider.overrideWith((ref) async => [pdf]),
+        ],
+        child: const MaterialApp(home: LibraryScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final searchField = find.byType(TextField);
+
+    await tester.enterText(searchField, 'neuro');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Neurology Review'), findsOneWidget);
+    expect(find.text('lecture-2026.pdf'), findsOneWidget);
+
+    await tester.enterText(searchField, 'lecture');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Neurology Review'), findsOneWidget);
+    expect(find.text('lecture-2026.pdf'), findsOneWidget);
+  });
+
   testWidgets('waits for the search debounce before showing results',
       (tester) async {
     final searchNote = Note(
@@ -376,7 +427,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          allLearningResourcesProvider.overrideWith((ref) async => const []),
           libraryRootsProvider.overrideWith((ref) async => nodes),
+          libraryTaxonomyNodesProvider.overrideWith((ref) async => nodes),
           noteSearchProvider('heart').overrideWith(
             (ref) async => [searchNote],
           ),
@@ -404,7 +457,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          allLearningResourcesProvider.overrideWith((ref) async => const []),
           libraryRootsProvider.overrideWith((ref) async => nodes),
+          libraryTaxonomyNodesProvider.overrideWith((ref) async => nodes),
           noteSearchProvider('unknown').overrideWith((ref) async => []),
         ],
         child: const MaterialApp(
@@ -418,7 +473,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
 
-    expect(find.text('No notes found for "unknown"'), findsOneWidget);
+    expect(find.text('No library results found for "unknown"'), findsOneWidget);
     expect(find.text('Medicine'), findsNothing);
   });
 
@@ -426,7 +481,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          allLearningResourcesProvider.overrideWith((ref) async => const []),
           libraryRootsProvider.overrideWith((ref) async => nodes),
+          libraryTaxonomyNodesProvider.overrideWith((ref) async => nodes),
           noteSearchProvider('unknown').overrideWith((ref) async => []),
         ],
         child: const MaterialApp(
@@ -440,15 +497,71 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
 
-    expect(find.text('No notes found for "unknown"'), findsOneWidget);
+    expect(find.text('No library results found for "unknown"'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Clear search'));
     await tester.pumpAndSettle();
 
     expect(find.byType(TextField), findsOneWidget);
-    expect(find.text('No notes found for "unknown"'), findsNothing);
+    expect(find.text('No library results found for "unknown"'), findsNothing);
     expect(find.text('Medicine'), findsOneWidget);
     expect(find.text('Surgery'), findsOneWidget);
+  });
+
+  testWidgets('shows an excerpt around a match deep in the note',
+      (tester) async {
+    final now = DateTime(2026, 1, 1);
+    final longText = List.filled(
+          12,
+          'Opening paragraph contains general background information.',
+        ).join(' ') +
+        ' The distinctiveMatchPhrase appears here with useful surrounding context.';
+
+    final note = Note(
+      uuid: 'deep-match-note',
+      topicUuid: 'root-1',
+      mode: Mode.detailedNotes,
+      title: 'General Reference',
+      bodyMarkdown: longText,
+      plainTextExtract: longText,
+      tags: const [],
+      citationOrder: const [],
+      isPinned: false,
+      createdAt: now,
+      updatedAt: now,
+      sync: SyncMetadata(
+        lastModifiedLocal: now,
+        isDirty: false,
+        isDeleted: false,
+        deviceId: 'test-device',
+        syncRevision: 1,
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          allLearningResourcesProvider.overrideWith((ref) async => const []),
+          libraryRootsProvider.overrideWith((ref) async => nodes),
+          libraryTaxonomyNodesProvider.overrideWith((ref) async => nodes),
+          noteSearchProvider('distinctivematchphrase')
+              .overrideWith((ref) async => [note]),
+        ],
+        child: const MaterialApp(home: LibraryScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextField),
+      'distinctivematchphrase',
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    expect(find.text('General Reference'), findsOneWidget);
+    expect(find.textContaining('distinctiveMatchPhrase'), findsOneWidget);
+    expect(find.textContaining('Opening paragraph'), findsNothing);
   });
 
   testWidgets('ranks search results by relevance', (tester) async {
@@ -543,7 +656,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          allLearningResourcesProvider.overrideWith((ref) async => const []),
           libraryRootsProvider.overrideWith((ref) async => nodes),
+          libraryTaxonomyNodesProvider.overrideWith((ref) async => nodes),
           noteSearchProvider('asthma').overrideWith(
             (ref) async => [
               bodyMatch,
@@ -586,6 +701,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          allLearningResourcesProvider.overrideWith((ref) async => const []),
           libraryRootsProvider.overrideWith(
             (ref) async => throw Exception('sensitive internal detail'),
           ),
@@ -607,6 +723,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          allLearningResourcesProvider.overrideWith((ref) async => const []),
           libraryRootsProvider.overrideWith((ref) async => nodes),
           noteSearchProvider('heart').overrideWith(
             (ref) async => throw Exception('sensitive internal detail'),

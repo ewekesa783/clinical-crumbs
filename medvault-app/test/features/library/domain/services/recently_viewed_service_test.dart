@@ -7,6 +7,13 @@ import 'package:medvault_app/features/library/domain/repositories/note_repositor
 import 'package:medvault_app/features/library/domain/services/recently_viewed_service.dart';
 
 class _FakeHistoryRepository implements HistoryRepository {
+  @override
+  Future<void> deleteByNoteUuid(String noteUuid) async {
+    _store.removeWhere((_, history) => history.noteUuid == noteUuid);
+  }
+
+  @override
+  Future<void> deleteAll() async => _store.clear();
   final Map<String, History> _store = {};
 
   @override
@@ -38,6 +45,9 @@ class _FakeNoteRepository implements NoteRepository {
   @override
   Future<void> save(Note note) async => _store[note.uuid] = note;
 
+
+  @override
+  Future<void> deleteByUuid(String uuid) async {}
   @override
   Future<Note?> getByUuid(String uuid) async => _store[uuid];
 

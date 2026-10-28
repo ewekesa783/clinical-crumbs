@@ -25,3 +25,11 @@ android/key.properties
 *.before_startup_screen-*
 startup-experiment-backup/
 startup-experiment-backup-*/
+
+# Content archive backups
+*.before-*
+*.pre-*
+
+# Python caches
+__pycache__/
+*.py[cod]
